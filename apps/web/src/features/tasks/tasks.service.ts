@@ -4,6 +4,8 @@ import {
   createTaskSchema,
   Task,
   taskSchema,
+  CalendarTasksResponse,
+  calendarTasksResponseSchema,
   tasksResponseSchema,
   TasksResponse,
   TaskDetail,
@@ -251,6 +253,77 @@ export async function getTasks(workspaceId: string): Promise<GetTasksResult> {
   return {
     status: "success",
     result: taskValidation.data,
+  };
+}
+
+export type GetCalendarTasksResult =
+  | { status: "success"; result: CalendarTasksResponse }
+  | { status: "unauthenticated" }
+  | { status: "forbidden" }
+  | { status: "unavailable" };
+
+export async function getCalendarTasks(): Promise<GetCalendarTasksResult> {
+  const apiUrl = process.env.API_URL;
+
+  if (!apiUrl) {
+    throw new Error("Falta configurar API_URL.");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session) {
+    return { status: "unauthenticated" };
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${apiUrl.replace(/\/+$/, "")}/tasks/calendar`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    return { status: "unavailable" };
+  }
+
+  if (response.status === 401) {
+    return { status: "unauthenticated" };
+  }
+
+  if (response.status === 403) {
+    return { status: "forbidden" };
+  }
+
+  if (response.status !== 200) {
+    return { status: "unavailable" };
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    return { status: "unavailable" };
+  }
+
+  const validation = calendarTasksResponseSchema.safeParse(payload);
+
+  if (!validation.success) {
+    return { status: "unavailable" };
+  }
+
+  return {
+    status: "success",
+    result: validation.data,
   };
 }
 

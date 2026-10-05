@@ -18,21 +18,31 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('summary')
-  getSummary(@Req() request: AuthenticatedRequest) {
+  getSummary(
+    @Req() request: AuthenticatedRequest,
+    @Query('period') period?: string,
+    @Query('date') date?: string,
+  ) {
     if (!request.authUser) {
       throw new UnauthorizedException('Debes iniciar sesión.');
     }
 
-    return this.dashboardService.getSummary({
-      id: request.authUser.id,
-      isAdmin: request.authUser.isAdmin,
-    });
+    return this.dashboardService.getSummary(
+      {
+        id: request.authUser.id,
+        isAdmin: request.authUser.isAdmin,
+      },
+      period,
+      date,
+    );
   }
 
   @Get('my-work')
   getMyWork(
     @Req() request: AuthenticatedRequest,
     @Query('focus') focus?: string,
+    @Query('period') period?: string,
+    @Query('date') date?: string,
   ) {
     if (!request.authUser) {
       throw new UnauthorizedException('Debes iniciar sesión.');
@@ -41,6 +51,6 @@ export class DashboardController {
     return this.dashboardService.getMyWorkSummary({
       id: request.authUser.id,
       isAdmin: request.authUser.isAdmin,
-    }, focus);
+    }, focus, period, date);
   }
 }

@@ -12,6 +12,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { UserAvatarsModule } from './user-avatars/user-avatars.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { UserAvatarsModule } from './user-avatars/user-avatars.module.js';
     TaskCommentsModule,
     DashboardModule,
     UserAvatarsModule,
+    ReportsModule,
     ThrottlerModule.forRoot([
       {
         name: 'default',

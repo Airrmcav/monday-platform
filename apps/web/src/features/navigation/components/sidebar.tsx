@@ -6,11 +6,13 @@ import { useState } from "react";
 import {
   AlertTriangle,
   Building2,
+  CalendarDays,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
   CircleHelp,
   FolderKanban,
+  FileSpreadsheet,
   House,
   ListTodo,
   ShieldCheck,
@@ -45,6 +47,7 @@ export default function Sidebar({
     pathname.startsWith("/tasks/") ||
     pathname.startsWith("/workspaces/");
   const isAreas = pathname === "/areas" || pathname.startsWith("/areas/");
+  const isReports = pathname === "/reports";
   const activeAreaId = areas.find(
     (area) =>
       pathname === `/areas/${area.id}` ||
@@ -164,6 +167,42 @@ export default function Sidebar({
 
           <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>
             Mi trabajo
+          </span>
+        </Link>
+
+        <Link
+          href="/calendar"
+          onClick={onNavigate}
+          title={collapsed ? "Calendario" : undefined}
+          aria-current={pathname === "/calendar" ? "page" : undefined}
+          className={`${itemClasses} ${itemLayout} ${
+            pathname === "/calendar"
+              ? "bg-primary-soft font-semibold text-primary before:absolute before:inset-y-2 before:left-0 before:w-0.75 before:rounded-full before:bg-primary"
+              : "text-foreground hover:bg-surface-hover"
+          }`}
+        >
+          <CalendarDays aria-hidden="true" size={19} className="shrink-0" />
+
+          <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>
+            Calendario
+          </span>
+        </Link>
+
+        <Link
+          href="/reports"
+          onClick={onNavigate}
+          title={collapsed ? "Reportes" : undefined}
+          aria-current={isReports ? "page" : undefined}
+          className={`${itemClasses} ${itemLayout} ${
+            isReports
+              ? "bg-primary-soft font-semibold text-primary before:absolute before:inset-y-2 before:left-0 before:w-0.75 before:rounded-full before:bg-primary"
+              : "text-foreground hover:bg-surface-hover"
+          }`}
+        >
+          <FileSpreadsheet aria-hidden="true" size={19} className="shrink-0" />
+
+          <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>
+            Reportes
           </span>
         </Link>
       </nav>

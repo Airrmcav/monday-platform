@@ -115,6 +115,8 @@ export default function AppShell({
 
 function getPageTitle(pathname: string) {
   if (pathname === "/dashboard") return "Inicio";
+  if (pathname === "/calendar") return "Calendario";
+  if (pathname === "/reports") return "Reportes";
   if (pathname === "/my-work" || pathname.startsWith("/my-work/")) {
     return "Mi trabajo";
   }

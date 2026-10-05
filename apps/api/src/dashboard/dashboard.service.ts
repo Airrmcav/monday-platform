@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service.js';
+import { getDashboardPeriodBounds } from './dashboard-period.js';
 
 type DashboardViewer = {
   id: string;
@@ -33,7 +34,12 @@ export class DashboardService {
     return currentUser;
   }
 
-  async getMyWorkSummary(viewer: DashboardViewer, requestedFocus?: string) {
+  async getMyWorkSummary(
+    viewer: DashboardViewer,
+    requestedFocus?: string,
+    requestedPeriod?: string,
+    requestedDate?: string,
+  ) {
     const currentUser = await this.getActiveViewer(viewer);
     const focus =
       requestedFocus === 'overdue' || requestedFocus === 'upcoming'
@@ -41,8 +47,10 @@ export class DashboardService {
         : 'all';
 
     const now = new Date();
-    const nextSevenDays = new Date(now);
-    nextSevenDays.setDate(nextSevenDays.getDate() + 7);
+    const { startAt, endAt } = getDashboardPeriodBounds(
+      requestedPeriod,
+      requestedDate,
+    );
 
     const workspaceWhere = {
       archivedAt: null,
@@ -63,6 +71,10 @@ export class DashboardService {
     const taskWhere = {
       archivedAt: null,
       workspace: workspaceWhere,
+      dueAt: {
+        gte: startAt,
+        lt: endAt,
+      },
       participants: {
         some: {
           userId: currentUser.id,
@@ -73,17 +85,31 @@ export class DashboardService {
       focus === 'overdue'
         ? {
             status: { not: 'COMPLETED' as const },
-            dueAt: { lt: now },
+            dueAt: {
+              gte: startAt,
+              lt: new Date(Math.min(endAt.getTime(), now.getTime())),
+            },
           }
         : focus === 'upcoming'
           ? {
               status: { not: 'COMPLETED' as const },
-              dueAt: { gte: now, lt: nextSevenDays },
+              dueAt: {
+                gte: new Date(Math.max(startAt.getTime(), now.getTime())),
+                lt: endAt,
+              },
             }
           : {};
 
-    const [totalAssigned, completedTasks, inProgressTasks, overdueTasks, dueThisWeek, urgentTasks, priorityCounts, tasks] =
-      await Promise.all([
+    const [
+      totalAssigned,
+      completedTasks,
+      inProgressTasks,
+      overdueTasks,
+      dueInPeriod,
+      urgentTasks,
+      priorityCounts,
+      tasks,
+    ] = await Promise.all([
         this.prisma.task.count({
           where: taskWhere,
         }),
@@ -106,7 +132,8 @@ export class DashboardService {
           where: {
             ...taskWhere,
             dueAt: {
-              lt: now,
+              gte: startAt,
+              lt: new Date(Math.min(endAt.getTime(), now.getTime())),
             },
             status: {
               not: 'COMPLETED',
@@ -119,10 +146,6 @@ export class DashboardService {
             ...taskWhere,
             status: {
               not: 'COMPLETED',
-            },
-            dueAt: {
-              gte: now,
-              lt: nextSevenDays,
             },
           },
         }),
@@ -141,7 +164,12 @@ export class DashboardService {
 
         this.prisma.task.groupBy({
           by: ['priority'],
-          where: taskWhere,
+          where: {
+            ...taskWhere,
+            status: {
+              not: 'COMPLETED',
+            },
+          },
           _count: {
             _all: true,
           },
@@ -234,7 +262,7 @@ export class DashboardService {
         completedTasks,
         inProgressTasks,
         overdueTasks,
-        dueThisWeek,
+        dueInPeriod,
         urgentTasks,
         completionRate:
           totalAssigned === 0
@@ -247,12 +275,18 @@ export class DashboardService {
     };
   }
 
-  async getSummary(viewer: DashboardViewer) {
+  async getSummary(
+    viewer: DashboardViewer,
+    requestedPeriod?: string,
+    requestedDate?: string,
+  ) {
     const currentUser = await this.getActiveViewer(viewer);
 
     const now = new Date();
-    const nextSevenDays = new Date(now);
-    nextSevenDays.setDate(nextSevenDays.getDate() + 7);
+    const { startAt, endAt } = getDashboardPeriodBounds(
+      requestedPeriod,
+      requestedDate,
+    );
 
     const workspaceWhere = {
       archivedAt: null,
@@ -270,7 +304,7 @@ export class DashboardService {
           }),
     };
 
-    const taskWhere = {
+    const taskAccessWhere = {
       parentId: null,
       archivedAt: null,
       workspace: workspaceWhere,
@@ -284,6 +318,13 @@ export class DashboardService {
             },
           }),
     };
+    const taskWhere = {
+      ...taskAccessWhere,
+      dueAt: {
+        gte: startAt,
+        lt: endAt,
+      },
+    };
 
     const [
       activeWorkspaces,
@@ -291,7 +332,7 @@ export class DashboardService {
       activeTasks,
       completedTasks,
       overdueTasks,
-      dueNextSevenDays,
+      dueInPeriod,
       urgentTasks,
       statusCounts,
       priorityCounts,
@@ -330,7 +371,8 @@ export class DashboardService {
             not: 'COMPLETED',
           },
           dueAt: {
-            lt: now,
+            gte: startAt,
+            lt: new Date(Math.min(endAt.getTime(), now.getTime())),
           },
         },
       }),
@@ -340,10 +382,6 @@ export class DashboardService {
           ...taskWhere,
           status: {
             not: 'COMPLETED',
-          },
-          dueAt: {
-            gte: now,
-            lt: nextSevenDays,
           },
         },
       }),
@@ -401,7 +439,6 @@ export class DashboardService {
             {
               dueAt: {
                 gte: now,
-                lt: nextSevenDays,
               },
             },
           ],
@@ -443,8 +480,8 @@ export class DashboardService {
             not: 'COMPLETED',
           },
           dueAt: {
-            gte: now,
-            lt: nextSevenDays,
+            gte: new Date(Math.max(startAt.getTime(), now.getTime())),
+            lt: endAt,
           },
         },
         orderBy: [
@@ -479,7 +516,11 @@ export class DashboardService {
 
       this.prisma.taskHistoryEntry.findMany({
         where: {
-          task: taskWhere,
+          createdAt: {
+            gte: startAt,
+            lt: endAt,
+          },
+          task: taskAccessWhere,
         },
         orderBy: [
           {
@@ -545,7 +586,7 @@ export class DashboardService {
         activeTasks,
         completedTasks,
         overdueTasks,
-        dueNextSevenDays,
+        dueInPeriod,
         urgentTasks,
         completionRate:
           totalTasks === 0

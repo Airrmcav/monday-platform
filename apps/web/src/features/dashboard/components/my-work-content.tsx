@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 
 import type { MyWorkSummary } from "@/features/dashboard/schemas/dashboard.schema";
+import DashboardPeriodSelector from "./dashboard-period-selector";
+import type { DashboardPeriodSelection } from "../period";
 
 const priorityMeta = {
   LOW: { label: "Baja", color: "#579dff" },
@@ -44,9 +46,10 @@ function getCurrentTimestamp() {
 type Props = {
   data: MyWorkSummary;
   focus: "all" | "overdue" | "upcoming";
+  selection: DashboardPeriodSelection;
 };
 
-export default function MyWorkPage({ data, focus }: Props) {
+export default function MyWorkPage({ data, focus, selection }: Props) {
   const { viewer, metrics, priorityBreakdown, areaSummary, tasks } = data;
 
   const [priorityFilter, setPriorityFilter] = useState<
@@ -100,19 +103,19 @@ export default function MyWorkPage({ data, focus }: Props) {
 
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
               {focus === "overdue"
-                ? "Tareas asignadas que ya vencieron y requieren atención."
+                ? "Tareas del período seleccionado que ya vencieron y requieren atención."
                 : focus === "upcoming"
-                  ? "Tareas asignadas con fecha de entrega en los próximos 7 días."
-                  : "Tareas en las que participas, prioridad de entrega y foco por área."}
+                  ? "Tareas asignadas con fecha futura dentro del período seleccionado."
+                  : "Tareas en las que participas, ordenadas por prioridad y fecha de entrega."}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
             <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-primary">
-              {metrics.totalAssigned} asignadas
+              {metrics.totalAssigned} asignadas en el período
             </span>
             <span className="rounded-full border border-border/70 bg-white/70 px-2.5 py-1">
-              {metrics.dueThisWeek} por vencer
+              {metrics.dueInPeriod} abiertas
             </span>
             <span className="rounded-full border border-border/70 bg-white/70 px-2.5 py-1">
               {metrics.completionRate}% completado
@@ -120,6 +123,14 @@ export default function MyWorkPage({ data, focus }: Props) {
           </div>
         </div>
       </section>
+
+      <DashboardPeriodSelector
+        basePath="/my-work"
+        period={selection.period}
+        date={selection.date}
+        today={selection.today}
+        focus={focus}
+      />
 
       <section aria-label="Métricas de Mi trabajo">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -156,9 +167,9 @@ export default function MyWorkPage({ data, focus }: Props) {
             softColor="#ffedf1"
           />
           <MetricCard
-            label="En 7 días"
-            value={metrics.dueThisWeek}
-            description="Próximas entregas"
+            label="En el período"
+            value={metrics.dueInPeriod}
+            description="Abiertas con entrega en el rango"
             icon={Flag}
             color="#fdab3d"
             softColor="#fff4dc"
@@ -271,7 +282,7 @@ export default function MyWorkPage({ data, focus }: Props) {
               {focus === "overdue"
                 ? `Mostrando ${tasks.length} de ${metrics.overdueTasks} tareas vencidas.`
                 : focus === "upcoming"
-                  ? `Mostrando ${tasks.length} de ${metrics.dueThisWeek} tareas por vencer.`
+                  ? `Mostrando ${tasks.length} tareas futuras del período seleccionado.`
                   : "Ordenadas por prioridad y vencimiento."}
             </p>
           </div>

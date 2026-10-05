@@ -15,12 +15,13 @@ import {
   PencilLine,
   Plus,
   ShieldAlert,
-  UserRound,
 } from "lucide-react";
 
 import LogoutButton from "@/features/auth/components/logout-button";
 import type { DashboardSummary } from "@/features/dashboard/schemas/dashboard.schema";
 import { getDashboardSummary } from "../dashboard.service";
+import DashboardPeriodSelector from "./dashboard-period-selector";
+import type { DashboardPeriodSelection } from "../period";
 
 const dateFormatter = new Intl.DateTimeFormat("es-MX", {
   weekday: "long",
@@ -96,8 +97,15 @@ const priorityItems = [
   },
 ] as const;
 
-export default async function DashboardPage() {
-  const dashboardResult = await getDashboardSummary();
+export default async function DashboardPage({
+  selection,
+}: {
+  selection: DashboardPeriodSelection;
+}) {
+  const dashboardResult = await getDashboardSummary(
+    selection.period,
+    selection.date,
+  );
 
   if (dashboardResult.status === "unauthenticated") {
     redirect("/login");
@@ -156,12 +164,19 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      <DashboardPeriodSelector
+        basePath="/dashboard"
+        period={selection.period}
+        date={selection.date}
+        today={selection.today}
+      />
+
       <section aria-label="Métricas principales">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Espacios activos"
             value={metrics.activeWorkspaces}
-            description="Disponibles para trabajar"
+            description="Estado actual, sin filtro de período"
             icon={Building2}
             color="#579dff"
             softColor="#eaf2ff"
@@ -170,7 +185,7 @@ export default async function DashboardPage() {
           <MetricCard
             label="Tareas activas"
             value={metrics.activeTasks}
-            description={`${metrics.totalTasks} tareas registradas`}
+            description={`${metrics.totalTasks} tareas en el período`}
             icon={ClipboardList}
             color="#a25ddc"
             softColor="#f4ebff"
@@ -190,9 +205,9 @@ export default async function DashboardPage() {
           />
 
           <MetricCard
-            label="Entregas esta semana"
-            value={metrics.dueNextSevenDays}
-            description="Durante los próximos 7 días"
+            label="Entregas en el período"
+            value={metrics.dueInPeriod}
+            description="Tareas abiertas con vencimiento en el rango"
             icon={CalendarClock}
             color="#fdab3d"
             softColor="#fff4dc"
@@ -309,7 +324,7 @@ function WorkStatusChart({
         <div>
           <h2 className="text-base font-semibold">Estado del trabajo</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Distribución de tareas principales visibles.
+            Distribución de tareas con entrega en el período seleccionado.
           </p>
         </div>
 
@@ -453,7 +468,7 @@ function AttentionTasks({
         <div>
           <h2 className="text-base font-semibold">Requiere atención</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Vencimientos y prioridades que conviene revisar.
+            Vencimientos y prioridades de las tareas del período.
           </p>
         </div>
 
@@ -468,7 +483,7 @@ function AttentionTasks({
         <EmptyState
           icon={CheckCircle2}
           title="Todo está bajo control"
-          description="No hay tareas vencidas, urgentes o próximas a vencer."
+          description="No hay tareas vencidas ni urgentes dentro del período."
         />
       ) : (
         <ol className="divide-y divide-border/60">
@@ -557,7 +572,7 @@ function UpcomingTasks({
         <div>
           <h2 className="text-base font-semibold">Próximas entregas</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tareas con entrega durante los próximos 7 días.
+            Tareas abiertas con entrega futura en el período seleccionado.
           </p>
         </div>
 
@@ -572,7 +587,7 @@ function UpcomingTasks({
         <EmptyState
           icon={CalendarClock}
           title="Sin entregas próximas"
-          description="No hay tareas programadas para los próximos 7 días."
+          description="No hay tareas abiertas con entrega futura en este período."
         />
       ) : (
         <ol className="divide-y divide-border/60">
@@ -656,7 +671,7 @@ function RecentActivity({
     <article className="overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-(--shadow-panel)">
       <header className="flex items-start justify-between gap-4 border-b border-border/60 px-5 py-4 sm:px-6">
         <div>
-          <h2 className="text-base font-semibold">Actividad reciente</h2>
+          <h2 className="text-base font-semibold">Actividad del período</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Últimos movimientos registrados en las tareas.
           </p>

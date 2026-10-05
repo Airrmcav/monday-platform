@@ -120,6 +120,38 @@ export const tasksResponseSchema = z.object({
 
 export type TasksResponse = z.infer<typeof tasksResponseSchema>;
 
+export const calendarTasksResponseSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.uuid(),
+      parentId: z.uuid().nullable(),
+      title: z.string(),
+      status: taskStatusSchema,
+      priority: taskPrioritySchema,
+      dueAt: z.iso.datetime({ offset: true }),
+      isBlocked: z.boolean(),
+      parent: z
+        .object({
+          id: z.uuid(),
+          title: z.string(),
+        })
+        .nullable(),
+      workspace: z.object({
+        id: z.uuid(),
+        name: z.string(),
+        area: z.object({
+          id: z.uuid(),
+          name: z.string(),
+        }),
+      }),
+    }),
+  ),
+});
+
+export type CalendarTasksResponse = z.infer<
+  typeof calendarTasksResponseSchema
+>;
+
 export const taskDetailSchema = taskSchema.extend({
   workspace: z.object({
     id: z.uuid(),

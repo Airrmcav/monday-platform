@@ -2,10 +2,13 @@ import { redirect } from "next/navigation";
 
 import MyWorkPage from "@/features/dashboard/components/my-work-content";
 import { getMyWorkSummary } from "@/features/dashboard/dashboard.service";
+import { resolveDashboardPeriod } from "@/features/dashboard/period";
 
 type MyWorkRouteProps = {
   searchParams: Promise<{
     focus?: string | string[];
+    period?: string | string[];
+    date?: string | string[];
   }>;
 };
 
@@ -16,7 +19,16 @@ export default async function MyWorkRoute({ searchParams }: MyWorkRouteProps) {
     requestedFocus === "overdue" || requestedFocus === "upcoming"
       ? requestedFocus
       : "all";
-  const myWorkResult = await getMyWorkSummary(focus);
+  const requestedPeriod = Array.isArray(query.period)
+    ? query.period[0]
+    : query.period;
+  const requestedDate = Array.isArray(query.date) ? query.date[0] : query.date;
+  const selection = resolveDashboardPeriod(requestedPeriod, requestedDate);
+  const myWorkResult = await getMyWorkSummary(
+    focus,
+    selection.period,
+    selection.date,
+  );
 
   if (myWorkResult.status === "unauthenticated") {
     redirect("/login");
@@ -52,6 +64,7 @@ export default async function MyWorkRoute({ searchParams }: MyWorkRouteProps) {
     <MyWorkPage
       data={myWorkResult.result}
       focus={focus}
+      selection={selection}
     />
   );
 }

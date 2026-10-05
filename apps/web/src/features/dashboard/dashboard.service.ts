@@ -7,6 +7,7 @@ import {
   dashboardSummarySchema,
   myWorkSummarySchema,
 } from "./schemas/dashboard.schema";
+import { getTodayDateKey, type DashboardPeriod } from "./period";
 
 export type GetDashboardSummaryResult =
   | {
@@ -26,7 +27,11 @@ export type GetMyWorkSummaryResult =
   | { status: "forbidden" }
   | { status: "unavailable" };
 
-export async function getDashboardSummary(): Promise<GetDashboardSummaryResult> {  const apiUrl = process.env.API_URL;
+export async function getDashboardSummary(
+  period: DashboardPeriod,
+  date: string,
+): Promise<GetDashboardSummaryResult> {
+  const apiUrl = process.env.API_URL;
 
   if (!apiUrl) {
     throw new Error("Falta configurar API_URL.");
@@ -46,7 +51,10 @@ export async function getDashboardSummary(): Promise<GetDashboardSummaryResult> 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}/dashboard/summary`, {
+    const url = new URL(`${apiUrl.replace(/\/+$/, "")}/dashboard/summary`);
+    url.searchParams.set("period", period);
+    url.searchParams.set("date", date);
+    response = await fetch(url, {
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${session.access_token}`,
@@ -93,6 +101,8 @@ export async function getDashboardSummary(): Promise<GetDashboardSummaryResult> 
 
 export async function getMyWorkSummary(
   focus: "all" | "overdue" | "upcoming" = "all",
+  period: DashboardPeriod = "month",
+  date: string = getTodayDateKey(),
 ): Promise<GetMyWorkSummaryResult> {
   const apiUrl = process.env.API_URL;
 
@@ -117,6 +127,8 @@ export async function getMyWorkSummary(
     const url = new URL(
       `${apiUrl.replace(/\/+$/, "")}/dashboard/my-work`,
     );
+    url.searchParams.set("period", period);
+    url.searchParams.set("date", date);
     if (focus !== "all") {
       url.searchParams.set("focus", focus);
     }

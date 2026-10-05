@@ -68,6 +68,19 @@ export class TasksController {
       isAdmin: request.authUser.isAdmin,
     });
   }
+
+  @Get('calendar')
+  findCalendarTasks(@Req() request: AuthenticatedRequest) {
+    if (!request.authUser) {
+      throw new UnauthorizedException('Debes iniciar sesión.');
+    }
+
+    return this.tasksService.findCalendarTasks({
+      id: request.authUser.id,
+      isAdmin: request.authUser.isAdmin,
+    });
+  }
+
   @Get(':id')
   findOne(
     @Req() request: AuthenticatedRequest,

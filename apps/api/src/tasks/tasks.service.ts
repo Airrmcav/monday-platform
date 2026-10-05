@@ -464,6 +464,42 @@ export class TaskService {
     };
   }
 
+  async findCalendarTasks(viewer: TaskViewer) {
+    const tasks = await this.prisma.task.findMany({
+      where: this.getAccessibleTaskWhere(viewer),
+      orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        parentId: true,
+        title: true,
+        status: true,
+        priority: true,
+        dueAt: true,
+        isBlocked: true,
+        parent: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            area: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return { data: tasks };
+  }
+
   async findOne(id: string, viewer: TaskViewer) {
     const task = await this.prisma.task.findFirst({
       where: {
