@@ -91,4 +91,40 @@ export const dashboardSummarySchema = z.strictObject({
   recentActivity: z.array(dashboardActivitySchema).max(6),
 });
 
+export const myWorkSummarySchema = z.strictObject({
+  viewer: z.strictObject({
+    name: z.string().min(1),
+    isAdmin: z.boolean(),
+  }),
+
+  metrics: z.strictObject({
+    totalAssigned: z.number().int().nonnegative(),
+    completedTasks: z.number().int().nonnegative(),
+    inProgressTasks: z.number().int().nonnegative(),
+    overdueTasks: z.number().int().nonnegative(),
+    dueThisWeek: z.number().int().nonnegative(),
+    urgentTasks: z.number().int().nonnegative(),
+    completionRate: z.number().int().min(0).max(100),
+  }),
+
+  priorityBreakdown: z.strictObject({
+    LOW: z.number().int().nonnegative(),
+    NORMAL: z.number().int().nonnegative(),
+    HIGH: z.number().int().nonnegative(),
+    URGENT: z.number().int().nonnegative(),
+  }),
+
+  areaSummary: z.array(
+    z.strictObject({
+      areaId: z.uuid(),
+      areaName: z.string().min(1),
+      taskCount: z.number().int().nonnegative(),
+      overdue: z.number().int().nonnegative(),
+    }),
+  ),
+
+  tasks: z.array(dashboardTaskItemSchema).max(20),
+});
+
 export type DashboardSummary = z.infer<typeof dashboardSummarySchema>;
+export type MyWorkSummary = z.infer<typeof myWorkSummarySchema>;

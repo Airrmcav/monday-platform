@@ -82,6 +82,7 @@ export const workspaceListItemSchema = workspaceSchema.extend({
     z.object({
       id: z.uuid(),
       name: z.string(),
+      avatarUrl: z.string().url().nullable().optional(),
     }),
   ),
   taskCount: z.number().int().nonnegative(),

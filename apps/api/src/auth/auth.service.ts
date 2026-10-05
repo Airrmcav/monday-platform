@@ -7,12 +7,16 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { SupabaseAdminService } from './supabase-admin.service.js';
 
 @Injectable()
 export class AuthService {
   private readonly supabase: SupabaseClient;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly supabaseAdmin: SupabaseAdminService,
+  ) {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_PUBLISHABLE_KEY;
 
@@ -48,6 +52,7 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        avatarPath: true,
         status: true,
         isAdmin: true,
       },
@@ -57,6 +62,21 @@ export class AuthService {
       throw new ForbiddenException('No tienes acceso a esta plataforma.');
     }
 
-    return user;
+    const { avatarPath, ...profile } = user;
+
+    return {
+      ...profile,
+      avatarUrl: avatarPath ? this.getAvatarPublicUrl(avatarPath) : null,
+    };
+  }
+
+  private getAvatarPublicUrl(avatarPath: string) {
+    const bucket = process.env.SUPABASE_AVATARS_BUCKET;
+
+    if (!bucket) {
+      throw new Error('Falta configurar SUPABASE_AVATARS_BUCKET.');
+    }
+
+    return this.supabaseAdmin.getPublicStorageUrl(bucket, avatarPath);
   }
 }

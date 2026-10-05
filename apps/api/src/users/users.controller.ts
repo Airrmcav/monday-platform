@@ -106,3 +106,14 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 }
+
+@Controller('users')
+@UseGuards(AuthGuard)
+export class UserProfilesController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get(':id/profile')
+  findProfile(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
+    return this.usersService.findPublicProfile(id);
+  }
+}

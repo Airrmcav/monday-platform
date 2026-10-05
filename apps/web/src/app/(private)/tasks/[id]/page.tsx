@@ -5,6 +5,7 @@ import TaskHistory from "@/features/tasks/components/task-history";
 import TaskPriorityBadge from "@/features/tasks/components/task-priority-badge";
 import TaskStatusForm from "@/features/tasks/components/task-status-form";
 import TaskSubtasks from "@/features/tasks/components/task-subtasks";
+import UserAvatar from "@/features/users/components/user-avatar";
 import {
   getSubtask,
   getTask,
@@ -49,30 +50,6 @@ const statusClasses = {
   IN_PROGRESS: "bg-progress-soft text-progress",
   IN_REVIEW: "bg-review-soft text-review",
   COMPLETED: "bg-success-soft text-success",
-};
-
-const priorityDetails = {
-  LOW: {
-    label: "Baja",
-    description: "Puede planificarse después de las tareas más prioritarias.",
-    className: "bg-pending-soft text-pending",
-  },
-  NORMAL: {
-    label: "Normal",
-    description: "Requiere atención dentro de la planificación habitual.",
-    className: "bg-primary-soft text-primary",
-  },
-  HIGH: {
-    label: "Alta",
-    description:
-      "Debe atenderse antes que las tareas de prioridad normal o baja.",
-    className: "bg-progress-soft text-progress",
-  },
-  URGENT: {
-    label: "Urgente",
-    description: "Requiere atención inmediata del equipo asignado.",
-    className: "bg-danger-soft text-danger",
-  },
 };
 
 const dateFormatter = new Intl.DateTimeFormat("es-MX", {
@@ -260,8 +237,6 @@ export default async function TaskPage({
           participant.userId === profile.user.id &&
           participant.role === "RESPONSIBLE",
       ));
-  const priority = priorityDetails[task.priority];
-
   const responsibleUsers = task.participants.filter(
     (participant) => participant.role === "RESPONSIBLE",
   );
@@ -332,115 +307,122 @@ export default async function TaskPage({
         </span>
       </Link>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-6">
-          <header className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-sm">
-            {/* Título y ubicación */}
-            <div className="relative overflow-hidden p-6 sm:p-8">
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-linear-to-r from-primary-soft/70 via-surface to-surface"
-              />
+      <header className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-sm">
+        <div className="relative overflow-hidden p-6 sm:p-8">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-linear-to-r from-primary-soft/70 via-surface to-surface"
+          />
 
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-30 border-primary/5"
-              />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-30 border-primary/5"
+          />
 
-              <div className="relative">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex min-w-0 flex-1 items-start gap-4">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white bg-surface text-primary shadow-sm">
-                      <ClipboardList aria-hidden="true" size={25} />
-                    </span>
+          <div className="relative">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 flex-1 items-start gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white bg-surface text-primary shadow-sm">
+                  <ClipboardList aria-hidden="true" size={25} />
+                </span>
 
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-                        {task.parentId === null
-                          ? "Detalle de la tarea"
-                          : "Detalle de la subtarea"}
-                      </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                    {task.parentId === null
+                      ? "Detalle de la tarea"
+                      : "Detalle de la subtarea"}
+                  </p>
 
-                      <h1 className="mt-2 wrap-break-words text-2xl font-semibold tracking-tight sm:text-3xl">
-                        {task.title}
-                      </h1>
-                    </div>
-                  </div>
-
-                  {canEditTask && (
-                    <Link
-                      href={`/tasks/${task.id}/edit`}
-                      className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-primary/20 bg-surface px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
-                      <FilePenLine aria-hidden="true" size={17} />
-                      Editar tarea
-                    </Link>
-                  )}
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span className="wrap-break-words">
-                    {task.workspace.area.name}
-                  </span>
-
-                  <span aria-hidden="true">/</span>
-
-                  <Link
-                    href={`/workspaces/${task.workspace.id}`}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  >
-                    <FolderOpen
-                      aria-hidden="true"
-                      size={15}
-                      className="shrink-0"
-                    />
-                    <span className="min-w-0 wrap-break-words">
-                      {task.workspace.name}
-                    </span>
-                  </Link>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold ${statusClasses[task.status]}`}
-                  >
-                    {statusLabels[task.status]}
-                  </span>
-
-                  {task.isBlocked && (
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-danger-soft px-3 py-1.5 text-xs font-semibold text-danger">
-                      <ShieldAlert aria-hidden="true" size={14} />
-                      Bloqueada
-                    </span>
-                  )}
+                  <h1 className="mt-2 wrap-break-words text-2xl font-semibold tracking-tight sm:text-3xl">
+                    {task.title}
+                  </h1>
                 </div>
               </div>
-            </div>
 
-            {/* Descripción */}
-            <div className="p-6 sm:p-8">
-              <h2 className="text-sm font-semibold">Descripción</h2>
-
-              <p className="mt-3 whitespace-pre-wrap wrap-break-words text-sm leading-7 text-muted-foreground">
-                {task.description?.trim() ||
-                  "Esta tarea todavía no tiene una descripción."}
-              </p>
-
-              {task.isBlocked && (
-                <div className="mt-6 rounded-xl border border-danger/20 bg-danger-soft p-4">
-                  <h2 className="flex items-center gap-2 text-sm font-semibold text-danger">
-                    <ShieldAlert aria-hidden="true" size={17} />
-                    Motivo del bloqueo
-                  </h2>
-
-                  <p className="mt-2 whitespace-pre-wrap wrap-break-words text-sm leading-6 text-foreground">
-                    {task.blockedReason || "No se registró un motivo."}
-                  </p>
-                </div>
+              {canEditTask && (
+                <Link
+                  href={`/tasks/${task.id}/edit`}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-primary/20 bg-surface px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  <FilePenLine aria-hidden="true" size={17} />
+                  Editar tarea
+                </Link>
               )}
             </div>
-          </header>
 
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="wrap-break-words">
+                {task.workspace.area.name}
+              </span>
+
+              <span aria-hidden="true">/</span>
+
+              <Link
+                href={`/workspaces/${task.workspace.id}`}
+                className="inline-flex max-w-full items-center gap-1.5 rounded font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                <FolderOpen
+                  aria-hidden="true"
+                  size={15}
+                  className="shrink-0"
+                />
+                <span className="min-w-0 wrap-break-words">
+                  {task.workspace.name}
+                </span>
+              </Link>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${statusClasses[task.status]}`}
+              >
+                {statusLabels[task.status]}
+              </span>
+
+              <TaskPriorityBadge priority={task.priority} />
+
+              {task.isBlocked && (
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-danger-soft px-3 py-1.5 text-xs font-semibold text-danger">
+                  <ShieldAlert aria-hidden="true" size={14} />
+                  Bloqueada
+                </span>
+              )}
+
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${deliveryAppearance.className}`}
+              >
+                <CalendarDays aria-hidden="true" size={14} />
+                {deliveryAppearance.label}: {formatDate(task.dueAt)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-border/60 p-6 sm:p-8">
+          <h2 className="text-sm font-semibold">Descripción</h2>
+
+          <p className="mt-3 max-w-4xl whitespace-pre-wrap wrap-break-words text-sm leading-7 text-muted-foreground">
+            {task.description?.trim() ||
+              "Esta tarea todavía no tiene una descripción."}
+          </p>
+
+          {task.isBlocked && (
+            <div className="mt-6 max-w-4xl rounded-xl border border-danger/20 bg-danger-soft p-4">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-danger">
+                <ShieldAlert aria-hidden="true" size={17} />
+                Motivo del bloqueo
+              </h2>
+
+              <p className="mt-2 whitespace-pre-wrap wrap-break-words text-sm leading-6 text-foreground">
+                {task.blockedReason || "No se registró un motivo."}
+              </p>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
           {subtasksResult?.status === "success" && (
             <TaskSubtasks
               taskId={task.id}
@@ -529,33 +511,6 @@ export default async function TaskPage({
           aria-label="Equipo y acciones de la tarea"
           className="min-w-0 space-y-5"
         >
-          <section className="overflow-hidden rounded-2xl border border-border/70 bg-surface">
-            <div className="p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${priority.className}`}
-                  >
-                    <Flag aria-hidden="true" size={20} />
-                  </span>
-
-                  <h2 className="text-sm font-semibold">
-                    Prioridad de la tarea
-                  </h2>
-                </div>
-
-                <span
-                  className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-bold ${priority.className}`}
-                >
-                  {priority.label}
-                </span>
-              </div>
-
-              <p className="mt-4 border-t border-border/60 pt-4 text-sm leading-6 text-muted-foreground">
-                {priority.description}
-              </p>
-            </div>
-          </section>
           <section className="overflow-hidden rounded-2xl border border-border/70 bg-surface">
             <div className="border-b border-border/60 px-5 py-4">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -648,19 +603,12 @@ export default async function TaskPage({
                           key={user.id}
                           className="flex items-center gap-3 rounded-xl bg-background/60 px-3 py-2.5"
                         >
-                          <span
-                            aria-hidden="true"
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${group.avatarClassName}`}
-                          >
-                            {user.name
-                              .trim()
-                              .split(/\s+/)
-                              .filter(Boolean)
-                              .slice(0, 2)
-                              .map((word) => Array.from(word)[0])
-                              .join("")
-                              .toLocaleUpperCase("es-MX") || "?"}
-                          </span>
+                          <UserAvatar
+                            userId={user.id}
+                            name={user.name}
+                            avatarUrl={user.avatarUrl ?? null}
+                            className={`h-8 w-8 text-xs font-semibold ${group.avatarClassName}`}
+                          />
 
                           <span className="min-w-0 wrap-break-words text-sm font-medium">
                             {user.name}

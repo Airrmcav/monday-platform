@@ -29,4 +29,8 @@ export class SupabaseAdminService {
   get storage(): SupabaseClient['storage'] {
     return this.client.storage;
   }
+
+  getPublicStorageUrl(bucket: string, path: string): string {
+    return this.client.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  }
 }

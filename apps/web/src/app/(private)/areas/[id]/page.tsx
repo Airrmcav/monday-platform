@@ -17,22 +17,11 @@ import { getAreas } from "@/features/areas/services/areas.service";
 import { getWorkspaces } from "@/features/workspaces/services/workspaces.service";
 import { workspaceSchema } from "@/features/workspaces/schemas/workspaces.schemas";
 import { getCurrentProfile } from "@/features/auth/services/auth.service";
+import UserAvatar from "@/features/users/components/user-avatar";
 
 type AreaPageProps = {
   params: Promise<{ id: string }>;
 };
-
-function getInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-
-  return (
-    words
-      .slice(0, 2)
-      .map((word) => Array.from(word)[0])
-      .join("")
-      .toLocaleUpperCase("es-MX") || "?"
-  );
-}
 
 export default async function AreaPage({ params }: AreaPageProps) {
   const { id } = await params;
@@ -232,9 +221,8 @@ export default async function AreaPage({ params }: AreaPageProps) {
 
               return (
                 <li key={workspace.id} className="min-w-0">
-                  <Link
-                    href={`/workspaces/${workspace.id}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-surface transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-(--shadow-panel) focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring motion-reduce:transition-none"
+                  <article
+                    className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-surface transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-(--shadow-panel) motion-reduce:transition-none"
                   >
                     {/* Portada */}
                     <div
@@ -279,7 +267,12 @@ export default async function AreaPage({ params }: AreaPageProps) {
                         </p>
 
                         <h3 className="mt-1.5 wrap-break-words text-xl font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
-                          {workspace.name}
+                          <Link
+                            href={`/workspaces/${workspace.id}`}
+                            className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                          >
+                            {workspace.name}
+                          </Link>
                         </h3>
 
                         <p className="mt-2 line-clamp-2 whitespace-pre-line wrap-break-words text-sm leading-6 text-muted-foreground">
@@ -381,14 +374,13 @@ export default async function AreaPage({ params }: AreaPageProps) {
                             className="flex items-center -space-x-2"
                           >
                             {workspace.members.slice(0, 4).map((member) => (
-                              <li
-                                key={member.id}
-                                title={member.name}
-                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-surface text-[10px] font-semibold text-white ${colors.icon}`}
-                              >
-                                <span aria-hidden="true">
-                                  {getInitials(member.name)}
-                                </span>
+                              <li key={member.id} title={member.name}>
+                                <UserAvatar
+                                  userId={member.id}
+                                  name={member.name}
+                                  avatarUrl={member.avatarUrl ?? null}
+                                  className={`h-8 w-8 border-2 border-surface text-[10px] font-semibold text-white ${colors.icon}`}
+                                />
                                 <span className="sr-only">{member.name}</span>
                               </li>
                             ))}
@@ -431,13 +423,16 @@ export default async function AreaPage({ params }: AreaPageProps) {
                           </div>
                         </div>
 
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                        <Link
+                          href={`/workspaces/${workspace.id}`}
+                          aria-label={`Abrir espacio ${workspace.name}`}
+                          className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        >
                           <ArrowUpRight aria-hidden="true" size={18} />
-                          <span className="sr-only">Abrir espacio</span>
-                        </span>
+                        </Link>
                       </div>
                     </div>
-                  </Link>
+                  </article>
                 </li>
               );
             })}

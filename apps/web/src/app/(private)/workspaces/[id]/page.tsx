@@ -9,6 +9,7 @@ import {
   Clock3,
   FolderOpen,
   FolderPen,
+  ListTodo,
   Plus,
   ShieldAlert,
   WifiOff,
@@ -29,6 +30,10 @@ const creationDateFormatter = new Intl.DateTimeFormat("es-MX", {
   year: "numeric",
   timeZone: "America/Mexico_City",
 });
+
+function getRequestTimestamp() {
+  return Date.now();
+}
 
 export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const { id } = await params;
@@ -115,17 +120,25 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
     notFound();
   }
 
-  const now = Date.now();
+  const now = getRequestTimestamp();
 
   const summary =
     tasksResult.status === "success"
       ? [
           {
-            label: "Tareas visibles",
+          label: "Tareas",
             value: tasksResult.result.data.length,
             icon: ClipboardList,
             color: "bg-primary-soft text-primary",
           },
+        {
+          label: "Abiertas",
+          value: tasksResult.result.data.filter(
+            (task) => task.status !== "COMPLETED",
+          ).length,
+          icon: ListTodo,
+          color: "bg-progress-soft text-progress",
+        },
           {
             label: "Completadas",
             value: tasksResult.result.data.filter(
@@ -165,7 +178,7 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
       </Link>
 
       <header className="overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-sm">
-        <div className="relative overflow-hidden p-6 sm:p-8">
+        <div className="relative overflow-hidden p-5 sm:p-7">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 bg-linear-to-r from-primary-soft/70 via-surface to-surface"
@@ -177,23 +190,25 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
           />
 
           <div className="relative">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
                 <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white bg-surface text-primary shadow-sm">
                   <FolderOpen aria-hidden="true" size={28} />
                 </span>
 
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                  <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
                     Espacio de trabajo
+                    <span className="h-1 w-1 rounded-full bg-primary/50" />
+                    {workspace.area.name}
                   </p>
 
-                  <h1 className="mt-2 wrap-break-words text-2xl font-semibold tracking-tight sm:text-3xl">
+                  <h1 className="mt-1.5 wrap-break-words text-2xl font-semibold tracking-tight sm:text-3xl">
                     {workspace.name}
                   </h1>
 
                   {workspace.description?.trim() && (
-                    <p className="mt-3 max-w-2xl whitespace-pre-line wrap-break-words text-sm leading-6 text-muted-foreground">
+                    <p className="mt-2 max-w-3xl whitespace-pre-line wrap-break-words text-sm leading-6 text-muted-foreground">
                       {workspace.description}
                     </p>
                   )}
@@ -220,7 +235,7 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <Link
                 href={`/areas/${workspace.areaId}`}
                 className="inline-flex max-w-full items-center gap-2 rounded-lg border border-primary/10 bg-surface/80 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -266,14 +281,14 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
 
       {summary && (
         <section aria-label="Resumen de tus tareas visibles">
-          <dl className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             {summary.map((item) => {
               const Icon = item.icon;
 
               return (
                 <div
                   key={item.label}
-                  className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-surface px-3 py-3"
+                  className="flex min-h-18 items-center gap-2.5 rounded-xl border border-border/70 bg-surface px-3.5 py-3 shadow-sm"
                 >
                   <dt className="flex min-w-0 flex-1 items-center gap-2.5">
                     <span
@@ -298,7 +313,7 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
       )}
 
       {tasksResult.status === "success" ? (
-        <TasksTable tasks={tasksResult.result.data} />
+        <TasksTable tasks={tasksResult.result.data} asOf={now} />
       ) : (
         <section className="rounded-2xl border border-border bg-surface p-6">
           <WifiOff

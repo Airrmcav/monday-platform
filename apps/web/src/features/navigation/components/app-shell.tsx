@@ -3,14 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import {
-  ChevronRight,
-  House,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
+import { ChevronRight, House } from "lucide-react";
 
 import type { NavigationUser } from "../navigation.types";
+import type { WorkspaceNavigationArea } from "../navigation.types";
 import Navbar from "./navbar";
 import Sidebar from "./sidebar";
 import type { TaskNotification } from "@/features/task-notifications/schemas/task-notifications.schema";
@@ -23,22 +19,22 @@ type AppShellProps = {
     initialUnreadCount: number;
     unavailable: boolean;
   };
+  workspaceNavigation: {
+    areas: WorkspaceNavigationArea[];
+    unavailable: boolean;
+  };
 };
 
 export default function AppShell({
   children,
   user,
   notifications,
+  workspaceNavigation,
 }: AppShellProps) {
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const title =
-    pathname === "/dashboard"
-      ? "Inicio"
-      : pathname === "/users" || pathname.startsWith("/users/")
-        ? "Usuarios"
-        : "MYCAV";
+  const title = getPageTitle(pathname);
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -49,14 +45,24 @@ export default function AppShell({
         Ir al contenido
       </a>
 
-      <Navbar user={user} notifications={notifications} />
+      <Navbar
+        user={user}
+        notifications={notifications}
+        workspaceNavigation={workspaceNavigation}
+      />
       <aside
         id="desktop-navigation"
         className={`fixed bottom-0 left-0 top-16 z-30 hidden overflow-y-auto overflow-x-hidden border-r border-border/60 bg-surface transition-[width] duration-300 ease-in-out motion-reduce:transition-none lg:block ${
           sidebarCollapsed ? "w-19" : "w-65"
         }`}
       >
-        <Sidebar isAdmin={user.isAdmin} collapsed={sidebarCollapsed} />
+        <Sidebar
+          isAdmin={user.isAdmin}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+          areas={workspaceNavigation.areas}
+          areasUnavailable={workspaceNavigation.unavailable}
+        />
       </aside>
 
       <div
@@ -64,48 +70,35 @@ export default function AppShell({
           sidebarCollapsed ? "lg:pl-19" : "lg:pl-65"
         }`}
       >
-        <div className="flex h-14 items-center gap-3 border-b border-border/60 bg-surface px-4 sm:px-6">
-          <button
-            type="button"
-            onClick={() => setSidebarCollapsed((value) => !value)}
-            aria-label={
-              sidebarCollapsed
-                ? "Expandir barra lateral"
-                : "Contraer barra lateral"
-            }
-            aria-expanded={!sidebarCollapsed}
-            aria-controls="desktop-navigation"
-            className="hidden h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary-soft hover:text-primary focus-visible:outline-2 focus-visible:outline-ring lg:flex"
-          >
-            {sidebarCollapsed ? (
-              <PanelLeftOpen aria-hidden="true" size={19} />
-            ) : (
-              <PanelLeftClose aria-hidden="true" size={19} />
-            )}
-          </button>
-
+        <div className="flex h-14 items-center justify-between gap-3 border-b border-border/60 bg-surface px-4 sm:px-6">
           <nav
             aria-label="Ubicación actual"
-            className="flex min-w-0 items-center gap-2 text-sm"
+            className="flex min-w-0 items-center gap-2.5 text-sm"
           >
             <Link
               href="/dashboard"
               aria-label="Inicio"
-              className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
             >
-              <House aria-hidden="true" size={17} />
+              <House aria-hidden="true" size={16} />
             </Link>
 
             <ChevronRight
               aria-hidden="true"
-              size={15}
+              size={14}
               className="shrink-0 text-muted-foreground"
             />
 
-            <span aria-current="page" className="truncate font-medium">
+            <span
+              aria-current="page"
+              className="truncate font-semibold text-foreground"
+            >
               {title}
             </span>
           </nav>
+          <span className="hidden text-xs text-muted-foreground sm:block">
+            MYCAV Services
+          </span>
         </div>
 
         <main
@@ -118,4 +111,22 @@ export default function AppShell({
       </div>
     </div>
   );
+}
+
+function getPageTitle(pathname: string) {
+  if (pathname === "/dashboard") return "Inicio";
+  if (pathname === "/my-work" || pathname.startsWith("/my-work/")) {
+    return "Mi trabajo";
+  }
+  if (pathname === "/users") return "Usuarios";
+  if (pathname.startsWith("/users/")) {
+    return pathname.endsWith("/edit") ? "Editar usuario" : "Perfil de usuario";
+  }
+  if (pathname === "/areas" || pathname.startsWith("/areas/")) {
+    return "Áreas de trabajo";
+  }
+  if (pathname.startsWith("/workspaces/")) return "Espacio de trabajo";
+  if (pathname.startsWith("/tasks/")) return "Tarea";
+  if (pathname === "/workspaces") return "Espacios de trabajo";
+  return "MYCAV";
 }

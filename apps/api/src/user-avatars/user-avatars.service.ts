@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 
@@ -39,9 +40,10 @@ export class UserAvatarsService {
       return null;
     }
 
-    return this.supabaseAdmin.storage
-      .from(this.getBucketName())
-      .getPublicUrl(avatarPath).data.publicUrl;
+    return this.supabaseAdmin.getPublicStorageUrl(
+      this.getBucketName(),
+      avatarPath,
+    );
   }
 
   async createUploadIntent(
@@ -49,8 +51,22 @@ export class UserAvatarsService {
     viewer: AvatarViewer,
   ) {
     const user = await this.getActiveUser(viewer.id);
-    const path = `${user.id}/${randomUUID()}.${EXTENSIONS[input.contentType]}`;
+    return this.createUploadIntentForUserUnchecked(input, user.id);
+  }
 
+  async createUploadIntentForUser(
+    input: CreateAvatarUploadIntentInput,
+    userId: string,
+  ) {
+    await this.getUser(userId);
+    return this.createUploadIntentForUserUnchecked(input, userId);
+  }
+
+  private async createUploadIntentForUserUnchecked(
+    input: CreateAvatarUploadIntentInput,
+    userId: string,
+  ) {
+    const path = `${userId}/${randomUUID()}.${EXTENSIONS[input.contentType]}`;
     const { data, error } = await this.supabaseAdmin.storage
       .from(this.getBucketName())
       .createSignedUploadUrl(path);
@@ -65,6 +81,7 @@ export class UserAvatarsService {
     }
 
     return {
+      bucket: this.getBucketName(),
       path: data.path,
       token: data.token,
       signedUrl: data.signedUrl,
@@ -72,10 +89,17 @@ export class UserAvatarsService {
   }
 
   async confirmUpload(input: ConfirmAvatarUploadInput, viewer: AvatarViewer) {
-    const bucket = this.getBucketName();
     const user = await this.getActiveUser(viewer.id);
+    return this.confirmUploadForUser(input, user.id);
+  }
 
-    const prefix = `${user.id}/`;
+  async confirmUploadForUser(
+    input: ConfirmAvatarUploadInput,
+    userId: string,
+  ) {
+    await this.getUser(userId);
+    const bucket = this.getBucketName();
+    const prefix = `${userId}/`;
     const fileName = input.path.slice(prefix.length);
     if (
       !input.path.startsWith(prefix) ||
@@ -87,7 +111,7 @@ export class UserAvatarsService {
 
     const { data: files, error: listError } = await this.supabaseAdmin.storage
       .from(bucket)
-      .list(user.id, { limit: 100 });
+      .list(userId, { limit: 100 });
 
     if (listError || !files) {
       this.logger.error(
@@ -105,13 +129,13 @@ export class UserAvatarsService {
     }
 
     const updatedUser = await this.prisma.user.update({
-      where: { id: user.id },
+      where: { id: userId },
       data: { avatarPath: input.path },
       select: { avatarPath: true },
     });
     const staleFilePaths = files
       .filter((file) => file.name !== fileName && !file.name.startsWith('.'))
-      .map((file) => `${user.id}/${file.name}`);
+      .map((file) => `${userId}/${file.name}`);
 
     await this.removeFiles(bucket, staleFilePaths);
 
@@ -119,21 +143,25 @@ export class UserAvatarsService {
   }
 
   async removeAvatar(viewer: AvatarViewer) {
-    const bucket = this.getBucketName();
     const user = await this.getActiveUser(viewer.id);
+    return this.removeAvatarForUser(user.id);
+  }
 
+  async removeAvatarForUser(userId: string) {
+    await this.getUser(userId);
+    const bucket = this.getBucketName();
     await this.prisma.user.update({
-      where: { id: user.id },
+      where: { id: userId },
       data: { avatarPath: null },
     });
 
     const { data: files } = await this.supabaseAdmin.storage
       .from(bucket)
-      .list(user.id, { limit: 100 });
+      .list(userId, { limit: 100 });
 
     const filePaths = (files ?? [])
       .filter((file) => !file.name.startsWith('.'))
-      .map((file) => `${user.id}/${file.name}`);
+      .map((file) => `${userId}/${file.name}`);
 
     await this.removeFiles(bucket, filePaths);
 
@@ -156,15 +184,25 @@ export class UserAvatarsService {
   }
 
   private async getActiveUser(userId: string) {
+    const user = await this.getUser(userId);
+
+    if (user.status !== 'ACTIVE') {
+      throw new ForbiddenException(
+        'No tienes acceso activo a esta plataforma.',
+      );
+    }
+
+    return user;
+  }
+
+  private async getUser(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, status: true },
     });
 
-    if (!user || user.status !== 'ACTIVE') {
-      throw new ForbiddenException(
-        'No tienes acceso activo a esta plataforma.',
-      );
+    if (!user) {
+      throw new NotFoundException('El usuario no existe.');
     }
 
     return user;

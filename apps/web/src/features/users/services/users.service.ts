@@ -10,6 +10,8 @@ import {
   type UsersResponse,
   type UpdateUserInput,
   updateUserSchema,
+  type UserProfile,
+  userProfileSchema,
 } from "../schemas/users.schemas";
 
 export type UsersResult =
@@ -37,6 +39,13 @@ export type UpdateUserResult =
 
 export type GetUserResult =
   | { status: "success"; user: UserListItem }
+  | { status: "unauthenticated" }
+  | { status: "forbidden" }
+  | { status: "not-found" }
+  | { status: "unavailable" };
+
+export type GetUserProfileResult =
+  | { status: "success"; profile: UserProfile }
   | { status: "unauthenticated" }
   | { status: "forbidden" }
   | { status: "not-found" }
@@ -431,5 +440,80 @@ export async function getUser(id: string): Promise<GetUserResult> {
   return {
     status: "success",
     user: validation.data,
+  };
+}
+
+export async function getUserProfile(
+  id: string,
+): Promise<GetUserProfileResult> {
+  const idValidation = userListItemSchema.shape.id.safeParse(id);
+  if (!idValidation.success) {
+    return { status: "not-found" };
+  }
+
+  const apiUrl = process.env.API_URL;
+
+  if (!apiUrl) {
+    throw new Error("Falta configurar API_URL.");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session) {
+    return { status: "unauthenticated" };
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${apiUrl.replace(/\/+$/, "")}/users/${encodeURIComponent(idValidation.data)}/profile`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+  } catch {
+    return { status: "unavailable" };
+  }
+
+  if (response.status === 401) {
+    return { status: "unauthenticated" };
+  }
+  if (response.status === 403) {
+    return { status: "forbidden" };
+  }
+  if (response.status === 404) {
+    return { status: "not-found" };
+  }
+  if (!response.ok) {
+    return { status: "unavailable" };
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    return { status: "unavailable" };
+  }
+
+  const validation = userProfileSchema.safeParse(payload);
+  if (!validation.success) {
+    return { status: "unavailable" };
+  }
+
+  return {
+    status: "success",
+    profile: validation.data,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   updateUserAction,
   UpdateUserState,
@@ -8,6 +8,14 @@ import {
 import { UserListItem } from "../schemas/users.schemas";
 import { LoaderCircle, Save, UserRoundPen } from "lucide-react";
 import Link from "next/link";
+import UserAvatarPicker from "./user-avatar-picker";
+import {
+  removeUserAvatarAction,
+} from "../actions/user-avatar-actions";
+import {
+  uploadUserAvatar,
+  validateUserAvatar,
+} from "../lib/upload-user-avatar";
 
 type EditUserFormProps = {
   user: UserListItem;
@@ -35,7 +43,46 @@ function FieldErrors({ id, messages }: { id: string; messages?: string[] }) {
 export default function EditUserForm({ user }: EditUserFormProps) {
   const action = updateUserAction.bind(null, user.id);
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [avatarError, setAvatarError] = useState("");
+  const [isAvatarPending, setIsAvatarPending] = useState(false);
   const errors = state.fieldErrors;
+
+  async function handleAvatarSelected(file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    const validationError = validateUserAvatar(file);
+    if (validationError) {
+      setAvatarError(validationError);
+      return;
+    }
+
+    setAvatarError("");
+    setIsAvatarPending(true);
+    const result = await uploadUserAvatar(user.id, file);
+
+    if (result.success) {
+      setAvatarUrl(result.avatarUrl);
+    } else {
+      setAvatarError(result.error);
+    }
+    setIsAvatarPending(false);
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarError("");
+    setIsAvatarPending(true);
+    const result = await removeUserAvatarAction(user.id);
+
+    if (result.success) {
+      setAvatarUrl(null);
+    } else {
+      setAvatarError(result.error);
+    }
+    setIsAvatarPending(false);
+  }
 
   return (
     <section
@@ -57,9 +104,50 @@ export default function EditUserForm({ user }: EditUserFormProps) {
         </div>
       </div>
 
-      <form action={formAction} aria-busy={isPending} className="p-6">
-        <fieldset disabled={isPending} className="min-w-0 space-y-6">
+      <form
+        action={formAction}
+        aria-busy={isPending || isAvatarPending}
+        className="p-6"
+      >
+        <fieldset
+          disabled={isPending || isAvatarPending}
+          className="min-w-0 space-y-6"
+        >
           <legend className="sr-only">Editar usuario</legend>
+
+          <div>
+            <UserAvatarPicker
+              name={user.name}
+              avatarUrl={avatarUrl}
+              onFileSelected={handleAvatarSelected}
+              disabled={isPending || isAvatarPending}
+            />
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p
+                aria-live="polite"
+                className="text-xs text-muted-foreground"
+              >
+                {isAvatarPending
+                  ? "Guardando foto…"
+                  : "La foto se guarda al seleccionarla."}
+              </p>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleAvatarRemove}
+                  disabled={isPending || isAvatarPending}
+                  className="cursor-pointer text-xs font-medium text-danger underline underline-offset-2 disabled:cursor-wait disabled:opacity-60"
+                >
+                  Quitar foto
+                </button>
+              )}
+            </div>
+            {avatarError && (
+              <p role="alert" className="mt-2 text-sm text-danger">
+                {avatarError}
+              </p>
+            )}
+          </div>
 
           <div>
             <label htmlFor="name" className="text-sm font-medium">

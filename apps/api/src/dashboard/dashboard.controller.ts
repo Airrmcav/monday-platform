@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -26,5 +27,20 @@ export class DashboardController {
       id: request.authUser.id,
       isAdmin: request.authUser.isAdmin,
     });
+  }
+
+  @Get('my-work')
+  getMyWork(
+    @Req() request: AuthenticatedRequest,
+    @Query('focus') focus?: string,
+  ) {
+    if (!request.authUser) {
+      throw new UnauthorizedException('Debes iniciar sesión.');
+    }
+
+    return this.dashboardService.getMyWorkSummary({
+      id: request.authUser.id,
+      isAdmin: request.authUser.isAdmin,
+    }, focus);
   }
 }

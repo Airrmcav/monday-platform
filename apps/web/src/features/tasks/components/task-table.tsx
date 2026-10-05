@@ -1,12 +1,25 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ClipboardList, Clock3, LockKeyhole } from "lucide-react";
+import {
+  ArrowUpRight,
+  ClipboardList,
+  Clock3,
+  LockKeyhole,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 
 import type { Task, TaskStatus } from "../schemas/tasks.schema";
 import TaskTableRow from "./task-table-row";
 import TaskPriorityBadge from "./task-priority-badge";
+import UserAvatar from "@/features/users/components/user-avatar";
 
 type TaskTableProps = {
   tasks: Task[];
+  asOf: number;
 };
 
 const statusStyles: Record<
@@ -53,19 +66,6 @@ const timeFormatter = new Intl.DateTimeFormat("es-MX", {
   timeZone: "America/Mexico_City",
 });
 
-function getInitials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((word) => Array.from(word)[0])
-      .join("")
-      .toLocaleUpperCase("es-MX") || "?"
-  );
-}
-
 type ParticipantListProps = {
   participants: Task["participants"];
   role: "RESPONSIBLE" | "COLLABORATOR";
@@ -93,12 +93,12 @@ function ParticipantList({ participants, role }: ParticipantListProps) {
     <ul className="space-y-2">
       {users.slice(0, 2).map((user) => (
         <li key={user.id} className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${avatarColor}`}
-          >
-            {getInitials(user.name)}
-          </span>
+          <UserAvatar
+            userId={user.id}
+            name={user.name}
+            avatarUrl={user.avatarUrl ?? null}
+            className={`h-7 w-7 text-[10px] font-semibold ${avatarColor}`}
+          />
 
           <span title={user.name} className="min-w-0 truncate text-xs">
             {user.name}
@@ -165,8 +165,75 @@ function TaskDate({ value, alert }: { value: string; alert?: DeliveryAlert }) {
   );
 }
 
-export default function TasksTable({ tasks }: TaskTableProps) {
-  const now = Date.now();
+export default function TasksTable({ tasks, asOf }: TaskTableProps) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | "ALL">("ALL");
+  const [priorityFilter, setPriorityFilter] = useState<
+    Task["priority"] | "ALL"
+  >("ALL");
+  const [attentionFilter, setAttentionFilter] = useState<
+    "ALL" | "OVERDUE" | "UPCOMING" | "BLOCKED"
+  >("ALL");
+  const nextSevenDays = asOf + 7 * 24 * 60 * 60 * 1000;
+
+  const filteredTasks = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase("es-MX");
+
+    return tasks.filter((task) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [
+          task.title,
+          task.description ?? "",
+          ...task.participants.map((participant) => participant.user.name),
+        ]
+          .join(" ")
+          .toLocaleLowerCase("es-MX")
+          .includes(normalizedSearch);
+      const matchesStatus =
+        statusFilter === "ALL" || task.status === statusFilter;
+      const matchesPriority =
+        priorityFilter === "ALL" || task.priority === priorityFilter;
+      const dueTime = Date.parse(task.dueAt);
+      const isOpen = task.status !== "COMPLETED";
+      const matchesAttention =
+        attentionFilter === "ALL" ||
+        (attentionFilter === "OVERDUE" && isOpen && dueTime < asOf) ||
+        (attentionFilter === "UPCOMING" &&
+          isOpen &&
+          dueTime >= asOf &&
+          dueTime <= nextSevenDays) ||
+        (attentionFilter === "BLOCKED" && isOpen && task.isBlocked);
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesPriority &&
+        matchesAttention
+      );
+    });
+  }, [
+    asOf,
+    attentionFilter,
+    nextSevenDays,
+    priorityFilter,
+    search,
+    statusFilter,
+    tasks,
+  ]);
+
+  const hasActiveFilters =
+    search !== "" ||
+    statusFilter !== "ALL" ||
+    priorityFilter !== "ALL" ||
+    attentionFilter !== "ALL";
+
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter("ALL");
+    setPriorityFilter("ALL");
+    setAttentionFilter("ALL");
+  }
 
   return (
     <section
@@ -191,9 +258,101 @@ export default function TasksTable({ tasks }: TaskTableProps) {
         </div>
 
         <span className="shrink-0 rounded-md bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground">
-          {tasks.length} {tasks.length === 1 ? "tarea" : "tareas"}
+          {filteredTasks.length} de {tasks.length}{" "}
+          {tasks.length === 1 ? "tarea" : "tareas"}
         </span>
       </header>
+
+      <div className="grid gap-3 border-b border-border/60 bg-background/40 p-4 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_180px_190px_auto]">
+        <label className="relative block">
+          <span className="sr-only">Buscar tareas y participantes</span>
+          <Search
+            aria-hidden="true"
+            size={17}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar tarea o persona…"
+            className="h-10 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
+          />
+        </label>
+
+        <label>
+          <span className="sr-only">Filtrar por estado</span>
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as TaskStatus | "ALL")
+            }
+            className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          >
+            <option value="ALL">Todos los estados</option>
+            {Object.entries(statusStyles).map(([value, status]) => (
+              <option key={value} value={value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="sr-only">Filtrar por prioridad</span>
+          <select
+            value={priorityFilter}
+            onChange={(event) =>
+              setPriorityFilter(event.target.value as Task["priority"] | "ALL")
+            }
+            className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          >
+            <option value="ALL">Todas las prioridades</option>
+            <option value="URGENT">Urgente</option>
+            <option value="HIGH">Alta</option>
+            <option value="NORMAL">Normal</option>
+            <option value="LOW">Baja</option>
+          </select>
+        </label>
+
+        <label>
+          <span className="sr-only">Filtrar por atención</span>
+          <select
+            value={attentionFilter}
+            onChange={(event) =>
+              setAttentionFilter(
+                event.target.value as
+                  | "ALL"
+                  | "OVERDUE"
+                  | "UPCOMING"
+                  | "BLOCKED",
+              )
+            }
+            className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          >
+            <option value="ALL">Cualquier fecha</option>
+            <option value="OVERDUE">Vencidas</option>
+            <option value="UPCOMING">Próximos 7 días</option>
+            <option value="BLOCKED">Bloqueadas</option>
+          </select>
+        </label>
+
+        {hasActiveFilters ? (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <X aria-hidden="true" size={15} />
+            Limpiar
+          </button>
+        ) : (
+          <span className="hidden items-center justify-center gap-1.5 px-2 text-xs text-muted-foreground xl:inline-flex">
+            <SlidersHorizontal aria-hidden="true" size={14} />
+            Filtros
+          </span>
+        )}
+      </div>
 
       {tasks.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-14 text-center">
@@ -208,6 +367,30 @@ export default function TasksTable({ tasks }: TaskTableProps) {
           <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             Aquí aparecerán las tareas de este espacio a las que tengas acceso.
           </p>
+        </div>
+      ) : filteredTasks.length === 0 ? (
+        <div className="flex flex-col items-center px-6 py-14 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+            <Search aria-hidden="true" size={26} />
+          </div>
+
+          <h3 className="mt-4 text-base font-semibold">
+            No hay tareas con estos filtros
+          </h3>
+
+          <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+            Cambia los criterios o limpia los filtros para volver a ver todas
+            las tareas del espacio.
+          </p>
+
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <X aria-hidden="true" size={15} />
+            Limpiar filtros
+          </button>
         </div>
       ) : (
         <>
@@ -283,11 +466,11 @@ export default function TasksTable({ tasks }: TaskTableProps) {
               </thead>
 
               <tbody className="divide-y divide-border/60">
-                {tasks.map((task) => {
+                {filteredTasks.map((task) => {
                   const status = statusStyles[task.status];
 
                   const hoursRemaining =
-                    (Date.parse(task.dueAt) - now) / (1000 * 60 * 60);
+                    (Date.parse(task.dueAt) - asOf) / (1000 * 60 * 60);
 
                   let deliveryAlert: DeliveryAlert | undefined;
 
@@ -398,8 +581,8 @@ export default function TasksTable({ tasks }: TaskTableProps) {
 
           <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-background/40 px-5 py-3 text-xs text-muted-foreground">
             <p>
-              {tasks.length}{" "}
-              {tasks.length === 1 ? "tarea visible" : "tareas visibles"}
+              {filteredTasks.length} de {tasks.length}{" "}
+              {filteredTasks.length === 1 ? "tarea visible" : "tareas visibles"}
             </p>
 
             <p>Horarios de Ciudad de México.</p>

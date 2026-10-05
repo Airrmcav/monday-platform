@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useActionState, useState } from "react";
 import { login } from "@/features/auth/actions/login-action";
 
@@ -40,17 +41,17 @@ export default function LoginForm() {
   });
 
   const inputClasses =
-    "mt-2 min-h-14 w-full rounded-xl border border-input-border " +
-    "bg-surface px-4 py-3.5 text-base text-foreground outline-none " +
+    "mt-1.5 min-h-11 w-full rounded-lg border border-input-border " +
+    "bg-surface px-3.5 py-2.5 text-sm text-foreground outline-none " +
     "transition-colors placeholder:text-muted-foreground " +
-    "hover:border-primary/60 focus:border-primary focus:ring-4 " +
+    "hover:border-primary/60 focus:border-primary focus:ring-2 " +
     "focus:ring-ring/15 read-only:bg-surface-hover";
 
   return (
-    <main className="min-h-dvh bg-background p-3 sm:p-5 lg:p-6">
-      <div className="mx-auto grid min-h-[calc(100dvh-3rem)] max-w-[1600px] overflow-hidden rounded-[28px] border border-border/60 bg-surface shadow-(--shadow-panel) lg:grid-cols-[1.1fr_1fr]">
+    <main className="flex min-h-dvh items-center justify-center bg-background p-4 sm:p-6">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-(--shadow-panel) lg:min-h-[min(680px,calc(100dvh-3rem))] lg:grid-cols-[1fr_0.9fr]">
         {/* Panel visual */}
-        <aside className="relative isolate hidden flex-col justify-between overflow-hidden bg-[#181b45] p-10 text-white lg:flex xl:p-14">
+        <aside className="relative isolate hidden flex-col justify-between overflow-hidden bg-[#181b45] p-8 text-white lg:flex xl:p-10">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 -z-10"
@@ -64,18 +65,24 @@ export default function LoginForm() {
           <div className="flex items-center gap-3">
             <span
               aria-hidden="true"
-              className="flex h-15 w-15 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 p-2 ring-1 ring-white/20"
             >
-              <img src="/Icon.webp" alt="" />
+              <Image
+                src="/Icon.webp"
+                alt=""
+                width={36}
+                height={36}
+                className="h-full w-full object-contain"
+              />
             </span>
 
-            <span className="text-xl font-bold tracking-[0.12em]">
+            <span className="text-lg font-bold tracking-widest">
               MYCAV Services
             </span>
           </div>
 
-          <div className="relative my-14">
-            <div className="mb-6 flex items-center gap-2 text-sm font-medium text-white/80">
+          <div className="relative my-8">
+            <div className="mb-4 flex items-center gap-2 text-xs font-medium text-white/80">
               <span
                 aria-hidden="true"
                 className="h-2 w-2 rounded-full bg-[#00ca72]"
@@ -83,7 +90,7 @@ export default function LoginForm() {
               Un espacio para todo tu equipo
             </div>
 
-            <h2 className="max-w-xl text-5xl font-semibold leading-[1.08] tracking-tight xl:text-6xl">
+            <h2 className="max-w-xl text-4xl font-semibold leading-[1.08] tracking-tight xl:text-5xl">
               Grandes proyectos.
               <br />
               <span className="text-[#aeb6ff]">Cada detalle,</span>
@@ -91,16 +98,16 @@ export default function LoginForm() {
               bajo control.
             </h2>
 
-            <p className="mt-6 max-w-md text-base leading-7 text-white/75">
+            <p className="mt-4 max-w-md text-sm leading-6 text-white/75">
               Organiza tus tareas, conecta con tu equipo y mantén cada entrega
               en movimiento.
             </p>
 
-            <div aria-hidden="true" className="relative mt-12 max-w-lg">
+            <div aria-hidden="true" className="relative mt-8 max-w-lg">
               <div className="absolute inset-0 translate-x-3 translate-y-3 rounded-2xl border border-white/10 bg-white/5" />
 
-              <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm xl:p-6">
-                <div className="mb-6 flex items-center justify-between">
+              <div className="relative overflow-hidden rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm xl:p-5">
+                <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded bg-[#aeb6ff]" />
                     <span className="text-sm font-semibold">
@@ -115,7 +122,7 @@ export default function LoginForm() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center gap-3">
                     <span className="h-5 w-5 rounded-md border border-white/25" />
                     <span className="h-2 flex-1 rounded-full bg-white/20" />
@@ -166,10 +173,10 @@ export default function LoginForm() {
         {/* Formulario */}
         <section
           aria-labelledby="login-title"
-          className="flex flex-col px-6 py-8 sm:px-12 lg:px-10 xl:px-16"
+          className="flex flex-col px-6 py-6 sm:px-10 lg:px-10 xl:px-12"
         >
           <div className="flex items-center justify-between gap-4">
-            <span className="text-lg font-bold tracking-widest text-primary lg:hidden">
+            <span className="text-base font-bold tracking-widest text-primary lg:hidden">
               MYCAV
             </span>
 
@@ -178,11 +185,11 @@ export default function LoginForm() {
             </span>
           </div>
 
-          <div className="flex flex-1 items-center justify-center py-12 lg:py-16">
-            <div className="w-full max-w-110">
+          <div className="flex flex-1 items-center justify-center py-7 lg:py-8">
+            <div className="w-full max-w-100">
               <div
                 aria-hidden="true"
-                className="mb-7 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary"
+                className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -191,7 +198,7 @@ export default function LoginForm() {
                   strokeWidth="1.7"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="h-7 w-7"
+                  className="h-5 w-5"
                 >
                   <rect x="5" y="10" width="14" height="11" rx="3" />
                   <path d="M8 10V7a4 4 0 0 1 8 0v3" />
@@ -201,24 +208,24 @@ export default function LoginForm() {
 
               <h1
                 id="login-title"
-                className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl"
+                className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"
               >
                 Bienvenido de nuevo
               </h1>
 
-              <p className="mt-3 text-base leading-7 text-muted-foreground">
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Ingresa para continuar con tus proyectos.
               </p>
 
               <form
                 action={formAction}
                 aria-busy={isPending}
-                className="mt-9 space-y-6"
+                className="mt-6 space-y-4"
               >
                 <div>
                   <label
                     htmlFor="email"
-                    className="block text-sm font-semibold text-foreground"
+                    className="block text-xs font-semibold text-foreground"
                   >
                     Correo electrónico
                   </label>
@@ -241,7 +248,7 @@ export default function LoginForm() {
                 <div>
                   <label
                     htmlFor="password"
-                    className="block text-sm font-semibold text-foreground"
+                    className="block text-xs font-semibold text-foreground"
                   >
                     Contraseña
                   </label>
@@ -272,7 +279,7 @@ export default function LoginForm() {
                           ? "Ocultar contraseña"
                           : "Mostrar contraseña"
                       }
-                      className="absolute cursor-pointer right-1.5 top-1/2 mt-1 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary-soft hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary-soft hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <EyeIcon visible={showPassword} />
                     </button>
@@ -283,7 +290,7 @@ export default function LoginForm() {
                   <p
                     id="login-error"
                     role="alert"
-                    className="rounded-xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm leading-6 text-danger"
+                    className="rounded-lg border border-danger/20 bg-danger-soft px-3 py-2.5 text-sm leading-5 text-danger"
                   >
                     {state.error}
                   </p>
@@ -292,13 +299,13 @@ export default function LoginForm() {
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="flex cursor-pointer min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-5 py-3.5 text-base font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-60"
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-60"
                 >
                   {isPending ? (
                     <>
                       <span
                         aria-hidden="true"
-                        className="h-5 w-5 rounded-full border-2 border-current border-r-transparent motion-safe:animate-spin"
+                        className="h-4 w-4 rounded-full border-2 border-current border-r-transparent motion-safe:animate-spin"
                       />
                       Verificando acceso…
                     </>
@@ -313,7 +320,7 @@ export default function LoginForm() {
                         strokeWidth="1.8"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="h-5 w-5"
+                        className="h-4 w-4"
                       >
                         <path d="M5 12h14m-6-6 6 6-6 6" />
                       </svg>
@@ -322,7 +329,7 @@ export default function LoginForm() {
                 </button>
               </form>
 
-              <p className="mt-7 text-sm leading-6 text-muted-foreground">
+              <p className="mt-5 text-xs leading-5 text-muted-foreground">
                 ¿Necesitas ayuda para entrar? Contacta al administrador de la
                 plataforma.
               </p>

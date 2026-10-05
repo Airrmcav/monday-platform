@@ -167,12 +167,12 @@ export default function NotificationsPanel({
         aria-controls="notifications-panel"
         title="Notificaciones"
         onClick={openPanel}
-        className="relative flex h-10 cursor-pointer w-10 shrink-0 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
+        className="relative flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         <Bell aria-hidden="true" size={21} />
 
         {unreadCount > 0 && (
-          <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e2445c] px-1 text-[10px] font-bold leading-none text-white ring-2 ring-brand-navy">
+          <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e2445c] px-1 text-[10px] font-bold leading-none text-white ring-2 ring-surface">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

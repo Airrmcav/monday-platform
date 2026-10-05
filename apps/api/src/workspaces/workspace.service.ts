@@ -9,6 +9,7 @@ import {
 
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { UserAvatarsService } from '../user-avatars/user-avatars.service.js';
 import type { CreateWorkspaceInput } from './schemas/create-workspace.schema.js';
 import { UpdateWorkspaceInput } from './schemas/update-workspace.schema.js';
 
@@ -19,7 +20,10 @@ type WorkspaceViewer = {
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userAvatarsService: UserAvatarsService,
+  ) {}
 
   async create(input: CreateWorkspaceInput, createdById: string) {
     const maxAttempts = 3;
@@ -170,6 +174,7 @@ export class WorkspacesService {
                   select: {
                     id: true,
                     name: true,
+                    avatarPath: true,
                   },
                 },
               },
@@ -270,7 +275,11 @@ export class WorkspacesService {
 
             return {
               ...workspace,
-              members: members.map((member) => member.user),
+              members: members.map(({ user }) => ({
+                id: user.id,
+                name: user.name,
+                avatarUrl: this.userAvatarsService.getPublicUrl(user.avatarPath),
+              })),
               ...stats,
             };
           }),

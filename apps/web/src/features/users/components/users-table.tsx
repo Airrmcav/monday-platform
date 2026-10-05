@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pencil, Users } from "lucide-react";
 
 import type { UsersResponse } from "../schemas/users.schemas";
+import UserAvatar from "./user-avatar";
 
 type UsersTableProps = {
   result: UsersResponse;
@@ -117,15 +118,6 @@ export default function UsersTable({ result, search = "" }: UsersTableProps) {
 
             <tbody className="divide-y divide-border/60">
               {users.map((user) => {
-                const initials =
-                  user.name
-                    .trim()
-                    .split(/\s+/)
-                    .slice(0, 2)
-                    .map((part) => part[0])
-                    .join("")
-                    .toUpperCase() || "U";
-
                 const isActive = user.status === "ACTIVE";
 
                 return (
@@ -135,12 +127,12 @@ export default function UsersTable({ result, search = "" }: UsersTableProps) {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden="true"
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary"
-                        >
-                          {initials}
-                        </span>
+                        <UserAvatar
+                          userId={user.id}
+                          name={user.name}
+                          avatarUrl={user.avatarUrl}
+                          className="h-10 w-10 bg-primary-soft text-xs font-bold text-primary"
+                        />
 
                         <div className="min-w-0">
                           <p className="wrap-break-word font-medium text-foreground">

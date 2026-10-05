@@ -6,12 +6,19 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 import Sidebar from "./sidebar";
+import type { WorkspaceNavigationArea } from "../navigation.types";
 
 type MobileNavigationProps = {
   isAdmin: boolean;
+  areas: WorkspaceNavigationArea[];
+  areasUnavailable: boolean;
 };
 
-export default function MobileNavigation({ isAdmin }: MobileNavigationProps) {
+export default function MobileNavigation({
+  isAdmin,
+  areas,
+  areasUnavailable,
+}: MobileNavigationProps) {
   const pathname = usePathname();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -40,9 +47,9 @@ export default function MobileNavigation({ isAdmin }: MobileNavigationProps) {
 
   const buttonClasses =
     "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg " +
-    "text-white/85 transition-colors hover:bg-white/10 hover:text-white " +
+    "text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground " +
     "focus-visible:outline-2 focus-visible:outline-offset-2 " +
-    "focus-visible:outline-brand-accent";
+    "focus-visible:outline-ring";
 
   return (
     <>
@@ -93,13 +100,18 @@ export default function MobileNavigation({ isAdmin }: MobileNavigationProps) {
             type="button"
             onClick={closeMenu}
             aria-label="Cerrar navegación"
-            className={buttonClasses}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
           >
             <X aria-hidden="true" size={21} />
           </button>
         </div>
 
-        <Sidebar isAdmin={isAdmin} onNavigate={closeMenu} />
+        <Sidebar
+          isAdmin={isAdmin}
+          onNavigate={closeMenu}
+          areas={areas}
+          areasUnavailable={areasUnavailable}
+        />
       </dialog>
     </>
   );

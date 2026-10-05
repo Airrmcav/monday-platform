@@ -13,6 +13,7 @@ import { UpdateTaskBlockInput } from './schemas/update-task-block.schema.js';
 import { UpdateTaskInput } from './schemas/update-task.schema.js';
 import { TaskHistoryQuery } from './schemas/task-history-query.schema.js';
 import { TaskNotificationsService } from '../task-notification/task-notifications.service.js';
+import { UserAvatarsService } from '../user-avatars/user-avatars.service.js';
 
 type TaskViewer = {
   id: string;
@@ -31,6 +32,7 @@ export class TaskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly taskNotificationsService: TaskNotificationsService,
+    private readonly userAvatarsService: UserAvatarsService,
   ) {}
 
   private getAccessibleTaskWhere(viewer: TaskViewer): Prisma.TaskWhereInput {
@@ -287,6 +289,7 @@ export class TaskService {
                       select: {
                         id: true,
                         name: true,
+                        avatarPath: true,
                       },
                     },
                   },
@@ -353,7 +356,7 @@ export class TaskService {
               body: `${creator.name} te asignó: ${task.title}`,
             });
 
-            return task;
+            return this.withParticipantAvatarUrls(task);
           },
           {
             isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -441,6 +444,7 @@ export class TaskService {
                   select: {
                     id: true,
                     name: true,
+                    avatarPath: true,
                   },
                 },
               },
@@ -454,7 +458,9 @@ export class TaskService {
     }
 
     return {
-      data: workspace.tasks,
+      data: workspace.tasks.map((task) =>
+        this.withParticipantAvatarUrls(task),
+      ),
     };
   }
 
@@ -504,6 +510,7 @@ export class TaskService {
               select: {
                 id: true,
                 name: true,
+                avatarPath: true,
               },
             },
           },
@@ -519,7 +526,7 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException('La tarea no existe o no está disponible.');
     }
-    return task;
+    return this.withParticipantAvatarUrls(task);
   }
 
   async updateStatusTask(
@@ -1531,6 +1538,7 @@ export class TaskService {
                   select: {
                     id: true,
                     name: true,
+                    avatarPath: true,
                   },
                 },
               },
@@ -1545,7 +1553,34 @@ export class TaskService {
       );
     }
     return {
-      data: parentTask.subtasks,
+      data: parentTask.subtasks.map((task) =>
+        this.withParticipantAvatarUrls(task),
+      ),
+    };
+  }
+
+  private withParticipantAvatarUrls<
+    T extends {
+      participants: Array<{
+        user: {
+          avatarPath: string | null;
+        };
+      }>;
+    },
+  >(task: T) {
+    return {
+      ...task,
+      participants: task.participants.map(({ user, ...participant }) => {
+        const { avatarPath, ...userData } = user;
+
+        return {
+          ...participant,
+          user: {
+            ...userData,
+            avatarUrl: this.userAvatarsService.getPublicUrl(avatarPath),
+          },
+        };
+      }),
     };
   }
 }

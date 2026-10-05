@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 
 export type CreateUserState = {
   error: string;
+  createdUserId?: string;
   fieldErrors?: {
     name?: string[];
     email?: string[];
@@ -88,6 +89,9 @@ export async function createUserAction(
 
     case "success":
       revalidatePath("/users");
-      redirect("/users");
+      return {
+        error: "",
+        createdUserId: result.user.id,
+      };
   }
 }

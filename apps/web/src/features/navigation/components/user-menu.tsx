@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, ShieldCheck } from "lucide-react";
 
 import LogoutButton from "@/features/auth/components/logout-button";
+import UserAvatar from "@/features/users/components/user-avatar";
 import type { NavigationUser } from "../navigation.types";
 
 type UserMenuProps = {
@@ -15,15 +16,6 @@ export default function UserMenu({ user }: UserMenuProps) {
   const pathname = usePathname();
   const menuRef = useRef<HTMLDetailsElement>(null);
   const triggerRef = useRef<HTMLElement>(null);
-
-  const initials =
-    user.name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() || "U";
 
   useEffect(() => {
     menuRef.current?.removeAttribute("open");
@@ -61,16 +53,19 @@ export default function UserMenu({ user }: UserMenuProps) {
       <summary
         ref={triggerRef}
         aria-label={`Abrir cuenta de ${user.name}`}
-        className="flex cursor-pointer list-none items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-brand-accent [&::-webkit-details-marker]:hidden"
+        className="flex cursor-pointer list-none items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
       >
-        <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white/25 bg-brand-accent text-xs font-bold text-brand-navy">
-          {initials}
-        </span>
+        <UserAvatar
+          userId={user.id}
+          name={user.name}
+          avatarUrl={user.avatarUrl}
+          className="h-9 w-9 border-2 border-border bg-primary-soft text-xs font-bold text-primary"
+        />
 
         <ChevronDown
           aria-hidden="true"
           size={15}
-          className="hidden text-white/75 sm:block"
+          className="hidden text-muted-foreground sm:block"
         />
       </summary>
 

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/features/auth/services/auth.service";
 import AppShell from "@/features/navigation/components/app-shell";
+import { getAreas } from "@/features/areas/services/areas.service";
+import { getWorkspaces } from "@/features/workspaces/services/workspaces.service";
 import { getTaskNotifications } from "@/features/task-notifications/task-notifications.service";
 
 type PrivateLayoutProps = {
@@ -29,6 +31,51 @@ export default async function PrivateLayout({ children }: PrivateLayoutProps) {
   }
 
   const notificationsResult = await getTaskNotifications();
+  const areasResult = await getAreas();
+
+  if (areasResult.status === "unauthenticated") {
+    redirect("/login");
+  }
+
+  const areaWorkspaceResults =
+    areasResult.status === "success"
+      ? await Promise.all(
+          areasResult.result.data.map(async (area) => ({
+            area,
+            result: await getWorkspaces(area.id),
+          })),
+        )
+      : [];
+
+  if (
+    areaWorkspaceResults.some(
+      ({ result: workspaceResult }) =>
+        workspaceResult.status === "unauthenticated",
+    )
+  ) {
+    redirect("/login");
+  }
+
+  const workspaceNavigationAreas =
+    areasResult.status === "success"
+      ? areaWorkspaceResults.map(({ area, result: workspaceResult }) => ({
+          id: area.id,
+          name: area.name,
+          workspaces:
+            workspaceResult.status === "success"
+              ? workspaceResult.result.data.map((workspace) => ({
+                  id: workspace.id,
+                  name: workspace.name,
+                }))
+              : [],
+        }))
+      : [];
+  const workspaceNavigationUnavailable =
+    areasResult.status === "unavailable" ||
+    areaWorkspaceResults.some(
+      ({ result: workspaceResult }) =>
+        workspaceResult.status !== "success",
+    );
 
   const notifications = {
     initialNotifications:
@@ -47,11 +94,17 @@ export default async function PrivateLayout({ children }: PrivateLayoutProps) {
   return (
     <AppShell
       user={{
+        id: result.user.id,
         name: result.user.name,
         email: result.user.email,
+        avatarUrl: result.user.avatarUrl,
         isAdmin: result.user.isAdmin,
       }}
       notifications={notifications}
+      workspaceNavigation={{
+        areas: workspaceNavigationAreas,
+        unavailable: workspaceNavigationUnavailable,
+      }}
     >
       {children}
     </AppShell>

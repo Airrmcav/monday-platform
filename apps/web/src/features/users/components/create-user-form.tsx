@@ -1,12 +1,18 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   createUserAction,
   CreateUserState,
 } from "../actions/create-user-action";
 import { Eye, EyeOff, LoaderCircle, ShieldCheck, UserPlus } from "lucide-react";
 import Link from "next/link";
+import UserAvatarPicker from "./user-avatar-picker";
+import {
+  uploadUserAvatar,
+  validateUserAvatar,
+} from "../lib/upload-user-avatar";
 
 const initialState: CreateUserState = {
   error: "",
@@ -32,13 +38,93 @@ function FieldErrors({ id, messages }: FieldErrorsProps) {
 }
 
 export default function CreateUserForm() {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(
     createUserAction,
     initialState,
   );
 
   const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState("");
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const errors = state.fieldErrors;
+
+  useEffect(() => {
+    if (!avatarPreview?.startsWith("blob:")) {
+      return;
+    }
+
+    return () => URL.revokeObjectURL(avatarPreview);
+  }, [avatarPreview]);
+
+  useEffect(() => {
+    if (!state.createdUserId) {
+      return;
+    }
+    const createdUserId = state.createdUserId;
+
+    if (!avatarFile) {
+      router.replace("/users");
+      return;
+    }
+
+    let isCurrent = true;
+
+    void (async () => {
+      await Promise.resolve();
+      if (!isCurrent) {
+        return;
+      }
+
+      setIsAvatarUploading(true);
+      setAvatarError("");
+      const result = await uploadUserAvatar(createdUserId, avatarFile);
+
+      if (!isCurrent) {
+        return;
+      }
+
+      if (result.success) {
+        router.replace("/users");
+      } else if (result.unauthenticated) {
+        router.replace("/login");
+      } else {
+        setAvatarError(
+          `El usuario se creó, pero no pudimos guardar su foto. ${result.error}`,
+        );
+      }
+      setIsAvatarUploading(false);
+    })();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [avatarFile, router, state.createdUserId]);
+
+  async function retryAvatarUpload() {
+    const userId = state.createdUserId;
+    if (!userId || !avatarFile) {
+      return;
+    }
+
+    setIsAvatarUploading(true);
+    setAvatarError("");
+    const result = await uploadUserAvatar(userId, avatarFile);
+
+    if (result.success) {
+      router.replace("/users");
+    } else if (result.unauthenticated) {
+      router.replace("/login");
+    } else {
+      setAvatarError(
+        `El usuario se creó, pero no pudimos guardar su foto. ${result.error}`,
+      );
+    }
+    setIsAvatarUploading(false);
+  }
 
   return (
     <section
@@ -60,9 +146,37 @@ export default function CreateUserForm() {
         </div>
       </div>
 
-      <form action={formAction} aria-busy={isPending} className="p-6">
-        <fieldset disabled={isPending} className="min-w-0 space-y-6">
+      <form
+        action={formAction}
+        aria-busy={isPending || isAvatarUploading}
+        className="p-6"
+      >
+        <fieldset
+          disabled={isPending || Boolean(state.createdUserId) || isAvatarUploading}
+          className="min-w-0 space-y-6"
+        >
           <legend className="sr-only">Información del usuario</legend>
+
+          <UserAvatarPicker
+            name={name}
+            avatarUrl={avatarPreview}
+            onFileSelected={(file) => {
+              setAvatarError("");
+              if (!file) {
+                return;
+              }
+
+              const validationError = validateUserAvatar(file);
+              if (validationError) {
+                setAvatarError(validationError);
+                return;
+              }
+
+              setAvatarFile(file);
+              setAvatarPreview(URL.createObjectURL(file));
+            }}
+            disabled={Boolean(state.createdUserId) || isAvatarUploading}
+          />
 
           <div className="grid gap-6 md:grid-cols-2">
             <div>
@@ -74,6 +188,7 @@ export default function CreateUserForm() {
                 id="name"
                 name="name"
                 type="text"
+                onChange={(event) => setName(event.currentTarget.value)}
                 autoComplete="off"
                 required
                 minLength={2}
@@ -235,7 +350,7 @@ export default function CreateUserForm() {
               type="submit"
               className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-60"
             >
-              {isPending ? (
+              {isPending || isAvatarUploading ? (
                 <LoaderCircle
                   aria-hidden="true"
                   size={18}
@@ -245,10 +360,33 @@ export default function CreateUserForm() {
                 <UserPlus aria-hidden="true" size={18} />
               )}
 
-              {isPending ? "Creando usuario…" : "Crear usuario"}
+              {isPending
+                ? "Creando usuario…"
+                : isAvatarUploading
+                  ? "Guardando foto…"
+                  : state.createdUserId
+                    ? "Usuario creado"
+                    : "Crear usuario"}
             </button>
           </div>
         </fieldset>
+        {avatarError && (
+          <div
+            role="alert"
+            className="mt-6 rounded-xl border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger"
+          >
+            <p>{avatarError}</p>
+            {state.createdUserId && avatarFile && !isAvatarUploading && (
+              <button
+                type="button"
+                onClick={retryAvatarUpload}
+                className="mt-2 cursor-pointer font-semibold underline underline-offset-2"
+              >
+                Reintentar subida
+              </button>
+            )}
+          </div>
+        )}
       </form>
     </section>
   );

@@ -61,6 +61,7 @@ export class UsersService {
           id: true,
           email: true,
           name: true,
+          avatarPath: true,
           status: true,
           isAdmin: true,
           createdAt: true,
@@ -70,7 +71,7 @@ export class UsersService {
     ]);
 
     return {
-      data: users,
+      data: users.map((user) => this.withAvatarUrl(user)),
       pagination: {
         page,
         pageSize,
@@ -131,13 +132,14 @@ export class UsersService {
       id: true,
       email: true,
       name: true,
+      avatarPath: true,
       status: true,
       isAdmin: true,
       createdAt: true,
     } as const;
 
     try {
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           authSubject,
           email,
@@ -147,6 +149,7 @@ export class UsersService {
         },
         select,
       });
+      return this.withAvatarUrl(user);
     } catch {
       let savedUser;
       try {
@@ -166,7 +169,7 @@ export class UsersService {
         );
       }
       if (savedUser) {
-        return savedUser;
+        return this.withAvatarUrl(savedUser);
       }
 
       try {
@@ -198,7 +201,7 @@ export class UsersService {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        return await this.prisma.$transaction(
+        const user = await this.prisma.$transaction(
           async (tx) => {
             const currentUser = await tx.user.findUnique({
               where: { id },
@@ -245,6 +248,7 @@ export class UsersService {
                 id: true,
                 email: true,
                 name: true,
+                avatarPath: true,
                 status: true,
                 isAdmin: true,
                 createdAt: true,
@@ -255,6 +259,7 @@ export class UsersService {
             isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
           },
         );
+        return this.withAvatarUrl(user);
       } catch (error) {
         const isTransactionConflic =
           error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -282,6 +287,7 @@ export class UsersService {
         id: true,
         email: true,
         name: true,
+        avatarPath: true,
         status: true,
         isAdmin: true,
         createdAt: true,
@@ -292,6 +298,52 @@ export class UsersService {
       throw new NotFoundException('El usuario no existe.');
     }
 
-    return user;
+    return this.withAvatarUrl(user);
+  }
+
+  async findPublicProfile(id: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarPath: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('El usuario no existe o no está disponible.');
+    }
+
+    return this.withAvatarUrl(user);
+  }
+
+  private withAvatarUrl<
+    T extends {
+      avatarPath: string | null;
+    },
+  >(user: T) {
+    const { avatarPath, ...profile } = user;
+
+    return {
+      ...profile,
+      avatarUrl: avatarPath
+        ? this.supabaseAdmin.getPublicStorageUrl(
+            this.getAvatarsBucketName(),
+            avatarPath,
+          )
+        : null,
+    };
+  }
+
+  private getAvatarsBucketName() {
+    const bucket = process.env.SUPABASE_AVATARS_BUCKET;
+
+    if (!bucket) {
+      throw new Error('Falta configurar SUPABASE_AVATARS_BUCKET.');
+    }
+
+    return bucket;
   }
 }

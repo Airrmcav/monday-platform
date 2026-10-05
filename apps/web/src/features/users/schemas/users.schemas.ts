@@ -4,10 +4,20 @@ export const userListItemSchema = z.object({
   id: z.string().uuid(),
   email: z.email(),
   name: z.string(),
+  avatarUrl: z.string().url().nullable(),
   status: z.enum(["ACTIVE", "INACTIVE"]),
   isAdmin: z.boolean(),
   createdAt: z.iso.datetime({ offset: true }),
 });
+
+export const userProfileSchema = z.strictObject({
+  id: z.string().uuid(),
+  name: z.string(),
+  email: z.email(),
+  avatarUrl: z.string().url().nullable(),
+});
+
+export type UserProfile = z.infer<typeof userProfileSchema>;
 
 export const usersPaginationSchema = z.object({
   page: z.number().int().positive(),
