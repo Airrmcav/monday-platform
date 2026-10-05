@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TaskAttachmentStatus {
+  PENDING
+  ATTACHED
+}
+
+enum TaskNotificationType {
+  TASK_ASSIGNED
+  TASK_STATUS_CHANGED
+  TASK_BLOCKED
+  TASK_UNBLOCKED
+  TASK_UPDATED
+  TASK_COMMENTED
+}
+
+model User {
+  id          String     @id @default(uuid()) @db.Uuid
+  authSubject String     @unique @db.Uuid
+  email       String     @unique
+  name        String
+  avatarPath  String?
+  status      UserStatus @default(ACTIVE)
+  isAdmin     Boolean    @default(false)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime   @updatedAt @db.Timestamptz(3)
+
+  receivedTaskNotifications TaskNotification[] @relation("TaskNotificationRecipient")
+  sentTaskNotifications     TaskNotification[] @relation("TaskNotificationActor")
+  uploadedTaskAttachments   TaskAttachment[]   @relation("TaskAttachmentUploader")
+  taskComments              TaskComment[]      @relation("TaskCommentAuthor")
+  createdWorkspaces         Workspace[]        @relation("WorkspaceCreator")
+  workspaceMemberships      WorkspaceMember[]
+  createdTasks              Task[]             @relation("TaskCreator")
+  taskParticipations        TaskParticipant[]
+  taskHistoryEntries        TaskHistoryEntry[] @relation("TaskHistoryActor")
+
+  @@map("app_users")
+}
+
+model Area {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String    @unique
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+  archivedAt DateTime? @db.Timestamptz(3)
+
+  workspaces Workspace[]
+
+  @@map("areas")
+}
+
+model Workspace {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  areaId      String    @db.Uuid
+  createdById String    @db.Uuid
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  archivedAt  DateTime? @db.Timestamptz(3)
+
+  area      Area              @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  createdBy User              @relation("WorkspaceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members   WorkspaceMember[]
+  tasks     Task[]
+
+  @@index([areaId, archivedAt])
+  @@index([createdById])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  workspaceId String   @db.Uuid
+  userId      String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TaskParticipantRole {
+  RESPONSIBLE
+  COLLABORATOR
+}
+
+enum TaskHistoryAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  BLOCKED
+  UNBLOCKED
+  BLOCK_REASON_CHANGED
+}
+
+model Task {
+  id            String             @id @default(uuid()) @db.Uuid
+  workspaceId   String             @db.Uuid
+  parentId      String?            @db.Uuid
+  createdById   String             @db.Uuid
+  title         String
+  description   String?
+  status        TaskStatus         @default(PENDING)
+  priority      TaskPriority       @default(NORMAL)
+  startsAt      DateTime?          @db.Timestamptz(3)
+  dueAt         DateTime           @db.Timestamptz(3)
+  completedAt   DateTime?          @db.Timestamptz(3)
+  isBlocked     Boolean            @default(false)
+  blockedReason String?
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime           @updatedAt @db.Timestamptz(3)
+  archivedAt    DateTime?          @db.Timestamptz(3)
+  history       TaskHistoryEntry[]
+  notifications TaskNotification[]
+
+  attachments  TaskAttachment[]
+  comments     TaskComment[]
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  createdBy    User              @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  parent       Task?             @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  subtasks     Task[]            @relation("TaskSubtasks")
+  participants TaskParticipant[]
+
+  @@index([workspaceId, archivedAt, status])
+  @@index([workspaceId, dueAt])
+  @@index([parentId])
+  @@index([createdById])
+  @@map("tasks")
+}
+
+model TaskParticipant {
+  taskId    String              @db.Uuid
+  userId    String              @db.Uuid
+  role      TaskParticipantRole
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([taskId, userId])
+  @@index([userId, role])
+  @@map("task_participants")
+}
+
+model TaskHistoryEntry {
+  id            String            @id @default(uuid()) @db.Uuid
+  taskId        String            @db.Uuid
+  actorId       String            @db.Uuid
+  actorName     String
+  action        TaskHistoryAction
+  changes       Json              @db.JsonB
+  schemaVersion Int               @default(1)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+
+  task  Task @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  actor User @relation("TaskHistoryActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt, id])
+  @@index([actorId])
+  @@map("task_history_entries")
+}
+
+model TaskComment {
+  id         String   @id @default(uuid()) @db.Uuid
+  taskId     String   @db.Uuid
+  authorId   String   @db.Uuid
+  authorName String
+  content    String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  task        Task             @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  attachments TaskAttachment[]
+  author      User             @relation("TaskCommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt, id])
+  @@index([authorId])
+  @@map("task_comments")
+}
+
+model TaskNotification {
+  id          String               @id @default(uuid()) @db.Uuid
+  recipientId String               @db.Uuid
+  taskId      String               @db.Uuid
+  actorId     String?              @db.Uuid
+  actorName   String?
+  type        TaskNotificationType
+  title       String
+  body        String
+  readAt      DateTime?            @db.Timestamptz(3)
+  createdAt   DateTime             @default(now()) @db.Timestamptz(3)
+
+  recipient User  @relation("TaskNotificationRecipient", fields: [recipientId], references: [id], onDelete: Restrict)
+  task      Task  @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  actor     User? @relation("TaskNotificationActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([recipientId, readAt, createdAt, id])
+  @@index([taskId, createdAt, id])
+  @@index([actorId])
+  @@map("task_notifications")
+}
+
+model TaskAttachment {
+  id             String               @id @default(uuid()) @db.Uuid
+  taskId         String               @db.Uuid
+  commentId      String?              @db.Uuid
+  uploadedById   String               @db.Uuid
+  uploadedByName String
+  status         TaskAttachmentStatus @default(PENDING)
+  storagePath    String               @unique
+  originalName   String
+  contentType    String
+  sizeBytes      Int
+  expiresAt      DateTime?            @db.Timestamptz(3)
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Restrict)
+
+  comment TaskComment? @relation(fields: [commentId], references: [id], onDelete: Restrict)
+
+  uploadedBy User @relation("TaskAttachmentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([taskId, status, expiresAt])
+  @@index([commentId])
+  @@index([uploadedById])
+  @@map("task_attachments")
+}

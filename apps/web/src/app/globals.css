@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+
+  /* Fondos y superficies */
+  --background: #f6f7fb;
+  --surface: #ffffff;
+  --surface-muted: #f0f3ff;
+  --surface-hover: #f5f6f8;
+
+  /* Texto */
+  --foreground: #323338;
+  --muted-foreground: #676879;
+
+  /* Acción principal */
+  --primary: #0073ea;
+  --primary-hover: #0060b9;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e5f1ff;
+
+  /* Bordes y foco */
+  --border: #d0d4e4;
+  --input-border: #8c8f9b;
+  --ring: #0073ea;
+
+  /* Pendiente */
+  --pending: #676879;
+  --pending-soft: #eef0f5;
+
+  /* En progreso */
+  --progress: #8a5700;
+  --progress-soft: #fff3d6;
+
+  /* En revisión */
+  --review: #6941c6;
+  --review-soft: #f0eaff;
+
+  /* Completada */
+  --success: #007f5f;
+  --success-soft: #e0f5ec;
+
+  /* Error y bloqueo */
+  --danger: #c62848;
+  --danger-hover: #a91f3c;
+  --danger-soft: #ffedf1;
+
+  /* Sombras */
+  --shadow-panel: 0 4px 20px rgb(50 51 56 / 6%), 0 1px 3px rgb(50 51 56 / 4%);
+
+  /* Identidad visual del login */
+  --brand-navy: #181b45;
+  --brand-indigo: #303078;
+  --brand-accent: #aeb6ff;
+  --brand-blue: #153d78;
+
+  --brand-gradient: linear-gradient(
+    115deg,
+    var(--brand-navy) 0%,
+    var(--brand-indigo) 65%,
+    var(--brand-blue) 100%
+  );
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-hover: var(--surface-hover);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-border: var(--border);
+  --color-input-border: var(--input-border);
+  --color-ring: var(--ring);
+
+  --color-pending: var(--pending);
+  --color-pending-soft: var(--pending-soft);
+  --color-progress: var(--progress);
+  --color-progress-soft: var(--progress-soft);
+  --color-review: var(--review);
+  --color-review-soft: var(--review-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-indigo: var(--brand-indigo);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-blue: var(--brand-blue);
+}
+
+body {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: var(--primary-soft);
+  color: var(--foreground);
+}
+
+#notifications-panel {
+  transform: translateX(100%);
+  transition:
+    transform 200ms ease-out,
+    overlay 200ms ease-out allow-discrete,
+    display 200ms ease-out allow-discrete;
+}
+
+#notifications-panel[open] {
+  transform: translateX(0);
+}
+
+@starting-style {
+  #notifications-panel[open] {
+    transform: translateX(100%);
+  }
+}
+
+/* Opcional: animar también el fondo oscuro */
+#notifications-panel::backdrop {
+  opacity: 0;
+  transition:
+    opacity 200ms ease-out,
+    overlay 200ms ease-out allow-discrete,
+    display 200ms ease-out allow-discrete;
+}
+
+#notifications-panel[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  #notifications-panel[open]::backdrop {
+    opacity: 0;
+  }
+}
