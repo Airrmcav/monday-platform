@@ -24,6 +24,8 @@ enum TaskNotificationType {
   TASK_UNBLOCKED
   TASK_UPDATED
   TASK_COMMENTED
+  TASK_DUE_SOON
+  TASK_OVERDUE
 }
 
 model User {
@@ -153,6 +155,7 @@ model Task {
 
   @@index([workspaceId, archivedAt, status])
   @@index([workspaceId, dueAt])
+  @@index([archivedAt, status, dueAt, id])
   @@index([parentId])
   @@index([createdById])
   @@map("tasks")
@@ -216,6 +219,7 @@ model TaskNotification {
   type        TaskNotificationType
   title       String
   body        String
+  dedupeKey   String?
   readAt      DateTime?            @db.Timestamptz(3)
   createdAt   DateTime             @default(now()) @db.Timestamptz(3)
 
@@ -226,6 +230,7 @@ model TaskNotification {
   @@index([recipientId, readAt, createdAt, id])
   @@index([taskId, createdAt, id])
   @@index([actorId])
+  @@unique([taskId, recipientId, type, dedupeKey])
   @@map("task_notifications")
 }
 

@@ -23,6 +23,7 @@ type CreateTaskNotificationsInput = {
   type: TaskNotificationType;
   title: string;
   body: string;
+  dedupeKey?: string;
 };
 
 @Injectable()
@@ -38,10 +39,10 @@ export class TaskNotificationsService {
     );
 
     if (recipientIds.length === 0) {
-      return;
+      return 0;
     }
 
-    await tx.taskNotification.createMany({
+    const result = await tx.taskNotification.createMany({
       data: recipientIds.map((recipientId) => ({
         recipientId,
         taskId: input.taskId,
@@ -50,8 +51,12 @@ export class TaskNotificationsService {
         type: input.type,
         title: input.title,
         body: input.body,
+        dedupeKey: input.dedupeKey ?? null,
       })),
+      skipDuplicates: input.dedupeKey !== undefined,
     });
+
+    return result.count;
   }
 
   async findAll(

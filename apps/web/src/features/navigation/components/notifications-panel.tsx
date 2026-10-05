@@ -436,6 +436,20 @@ function getNotificationPresentation(type: TaskNotification["type"]): {
         softColor: "#f4ebff",
       };
 
+    case "TASK_DUE_SOON":
+      return {
+        icon: Clock3,
+        color: "#b26a00",
+        softColor: "#fff4e0",
+      };
+
+    case "TASK_OVERDUE":
+      return {
+        icon: CircleAlert,
+        color: "#b4233f",
+        softColor: "#ffedf1",
+      };
+
     default:
       return {
         icon: Flag,

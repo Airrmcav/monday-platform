@@ -7,6 +7,8 @@ export const taskNotificationTypeSchema = z.enum([
   "TASK_UNBLOCKED",
   "TASK_UPDATED",
   "TASK_COMMENTED",
+  "TASK_DUE_SOON",
+  "TASK_OVERDUE",
 ]);
 
 export const taskNotificationSchema = z.strictObject({
