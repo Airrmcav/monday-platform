@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export const userTaskSummarySchema = z.object({
+  openTaskCount: z.number().int().nonnegative(),
+  overdueTaskCount: z.number().int().nonnegative(),
+});
+
+export type UserTaskSummary = z.infer<typeof userTaskSummarySchema>;
+
 export const userListItemSchema = z.object({
   id: z.string().uuid(),
   email: z.email(),
@@ -8,6 +15,7 @@ export const userListItemSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE"]),
   isAdmin: z.boolean(),
   createdAt: z.iso.datetime({ offset: true }),
+  taskSummary: userTaskSummarySchema.optional(),
 });
 
 export const userProfileSchema = z.strictObject({
@@ -15,6 +23,7 @@ export const userProfileSchema = z.strictObject({
   name: z.string(),
   email: z.email(),
   avatarUrl: z.string().url().nullable(),
+  taskSummary: userTaskSummarySchema,
 });
 
 export type UserProfile = z.infer<typeof userProfileSchema>;

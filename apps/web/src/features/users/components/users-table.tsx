@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pencil, Users } from "lucide-react";
 
 import type { UsersResponse } from "../schemas/users.schemas";
-import UserAvatar from "./user-avatar";
+import UserAvatar, { USER_TASK_HEALTH_THRESHOLDS } from "./user-avatar";
 
 type UsersTableProps = {
   result: UsersResponse;
@@ -60,6 +60,15 @@ export default function UsersTable({ result, search = "" }: UsersTableProps) {
           <p className="mt-0.5 text-sm text-muted-foreground">
             {result.pagination.total}{" "}
             {search ? "usuarios encontrados" : "usuarios registrados"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Estado del contorno:{" "}
+            <span className="font-medium text-success">verde</span> al día,{" "}
+            <span className="font-medium text-progress">amarillo</span> con{" "}
+            {USER_TASK_HEALTH_THRESHOLDS.open} o más tareas abiertas o 1–2{" "}
+            vencidas, y{" "}
+            <span className="font-medium text-danger">rojo</span> con{" "}
+            {USER_TASK_HEALTH_THRESHOLDS.overdue} o más vencidas.
           </p>
         </div>
       </header>
@@ -131,6 +140,10 @@ export default function UsersTable({ result, search = "" }: UsersTableProps) {
                           userId={user.id}
                           name={user.name}
                           avatarUrl={user.avatarUrl}
+                          taskSummary={user.taskSummary ?? {
+                            openTaskCount: 0,
+                            overdueTaskCount: 0,
+                          }}
                           className="h-10 w-10 bg-primary-soft text-xs font-bold text-primary"
                         />
 

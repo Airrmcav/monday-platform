@@ -12,6 +12,7 @@ import { SupabaseAdminService } from '../auth/supabase-admin.service.js';
 import type { CreateUserInput } from './schemas/create-user.schema.js';
 import { UpdateUserInput } from './schemas/update-user.schema.js';
 import { Prisma } from '../generated/prisma/client.js';
+import { getUserTaskSummaries } from '../tasks/user-task-summary.js';
 
 @Injectable()
 export class UsersService {
@@ -70,8 +71,17 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
+    const userIds = users.map((user) => user.id);
+    const taskSummaries = await getUserTaskSummaries(
+      this.prisma.taskParticipant,
+      userIds,
+    );
+
     return {
-      data: users.map((user) => this.withAvatarUrl(user)),
+      data: users.map((user) => ({
+        ...this.withAvatarUrl(user),
+        taskSummary: taskSummaries.get(user.id)!,
+      })),
       pagination: {
         page,
         pageSize,
@@ -298,7 +308,15 @@ export class UsersService {
       throw new NotFoundException('El usuario no existe.');
     }
 
-    return this.withAvatarUrl(user);
+    const taskSummaries = await getUserTaskSummaries(
+      this.prisma.taskParticipant,
+      [user.id],
+    );
+
+    return {
+      ...this.withAvatarUrl(user),
+      taskSummary: taskSummaries.get(user.id)!,
+    };
   }
 
   async findPublicProfile(id: string) {
@@ -316,7 +334,24 @@ export class UsersService {
       throw new NotFoundException('El usuario no existe o no está disponible.');
     }
 
-    return this.withAvatarUrl(user);
+    const taskSummaries = await getUserTaskSummaries(
+      this.prisma.taskParticipant,
+      [user.id],
+    );
+
+    return {
+      ...this.withAvatarUrl(user),
+      taskSummary: taskSummaries.get(user.id)!,
+    };
+  }
+
+  async findTaskSummary(userId: string) {
+    const taskSummaries = await getUserTaskSummaries(
+      this.prisma.taskParticipant,
+      [userId],
+    );
+
+    return taskSummaries.get(userId)!;
   }
 
   private withAvatarUrl<

@@ -1,10 +1,13 @@
 "use client";
 
 import { Camera, UserRound } from "lucide-react";
+import type { UserTaskSummary } from "../schemas/users.schemas";
+import { getUserTaskHealth } from "./user-avatar";
 
 type UserAvatarPickerProps = {
   name: string;
   avatarUrl: string | null;
+  taskSummary?: UserTaskSummary;
   onFileSelected: (file: File | null) => void;
   disabled?: boolean;
 };
@@ -12,9 +15,13 @@ type UserAvatarPickerProps = {
 export default function UserAvatarPicker({
   name,
   avatarUrl,
+  taskSummary,
   onFileSelected,
   disabled = false,
 }: UserAvatarPickerProps) {
+  const taskHealth = getUserTaskHealth(
+    taskSummary ?? { openTaskCount: 0, overdueTaskCount: 0 },
+  );
   const initials =
     name
       .trim()
@@ -27,9 +34,11 @@ export default function UserAvatarPicker({
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border/70 bg-background p-4 sm:flex-row sm:items-center">
       <span
-        aria-label={avatarUrl ? `Foto de ${name}` : "Sin foto de perfil"}
+        aria-label={`Foto de ${name}. Estado de tareas: ${taskHealth.description}`}
         role="img"
-        className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-lg font-semibold text-primary"
+        title={taskHealth.description}
+        className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 bg-primary-soft text-lg font-semibold text-primary"
+        style={{ borderColor: taskHealth.color }}
       >
         <span aria-hidden="true">
           {avatarUrl ? <UserRound size={24} /> : initials}

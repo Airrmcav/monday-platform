@@ -59,6 +59,7 @@ export default function UserMenu({ user }: UserMenuProps) {
           userId={user.id}
           name={user.name}
           avatarUrl={user.avatarUrl}
+          taskSummary={user.taskSummary}
           className="h-9 w-9 border-2 border-border bg-primary-soft text-xs font-bold text-primary"
         />
 

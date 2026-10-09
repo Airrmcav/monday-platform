@@ -98,6 +98,7 @@ export default async function PrivateLayout({ children }: PrivateLayoutProps) {
         name: result.user.name,
         email: result.user.email,
         avatarUrl: result.user.avatarUrl,
+        taskSummary: result.user.taskSummary,
         isAdmin: result.user.isAdmin,
       }}
       notifications={notifications}

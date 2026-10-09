@@ -379,6 +379,7 @@ export default async function AreaPage({ params }: AreaPageProps) {
                                   userId={member.id}
                                   name={member.name}
                                   avatarUrl={member.avatarUrl ?? null}
+                                  taskSummary={member.taskSummary}
                                   className={`h-8 w-8 border-2 border-surface text-[10px] font-semibold text-white ${colors.icon}`}
                                 />
                                 <span className="sr-only">{member.name}</span>

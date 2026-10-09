@@ -65,6 +65,7 @@ export default async function UserProfilePage({
           <UserAvatar
             name={profile.name}
             avatarUrl={profile.avatarUrl}
+            taskSummary={profile.taskSummary}
             className="h-28 w-28 border-4 border-primary-soft bg-primary-soft text-2xl font-semibold text-primary"
           />
 

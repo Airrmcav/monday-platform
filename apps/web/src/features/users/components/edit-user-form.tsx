@@ -119,6 +119,7 @@ export default function EditUserForm({ user }: EditUserFormProps) {
             <UserAvatarPicker
               name={user.name}
               avatarUrl={avatarUrl}
+              taskSummary={user.taskSummary}
               onFileSelected={handleAvatarSelected}
               disabled={isPending || isAvatarPending}
             />

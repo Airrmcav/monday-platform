@@ -14,6 +14,10 @@ import { UpdateTaskInput } from './schemas/update-task.schema.js';
 import { TaskHistoryQuery } from './schemas/task-history-query.schema.js';
 import { TaskNotificationsService } from '../task-notification/task-notifications.service.js';
 import { UserAvatarsService } from '../user-avatars/user-avatars.service.js';
+import {
+  getUserTaskSummaries,
+  type UserTaskSummary,
+} from './user-task-summary.js';
 
 type TaskViewer = {
   id: string;
@@ -356,7 +360,11 @@ export class TaskService {
               body: `${creator.name} te asignó: ${task.title}`,
             });
 
-            return this.withParticipantAvatarUrls(task);
+            const taskSummaries = await getUserTaskSummaries(
+              tx.taskParticipant,
+              task.participants.map((participant) => participant.userId),
+            );
+            return this.withParticipantAvatarUrls(task, taskSummaries);
           },
           {
             isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -457,9 +465,16 @@ export class TaskService {
       throw new NotFoundException('El espacio no existe o no está disponible.');
     }
 
+    const taskSummaries = await getUserTaskSummaries(
+      this.prisma.taskParticipant,
+      workspace.tasks.flatMap((task) =>
+        task.participants.map((participant) => participant.userId),
+      ),
+    );
+
     return {
       data: workspace.tasks.map((task) =>
-        this.withParticipantAvatarUrls(task),
+        this.withParticipantAvatarUrls(task, taskSummaries),
       ),
     };
   }
@@ -562,7 +577,11 @@ export class TaskService {
     if (!task) {
       throw new NotFoundException('La tarea no existe o no está disponible.');
     }
-    return this.withParticipantAvatarUrls(task);
+    const taskSummaries = await getUserTaskSummaries(
+      this.prisma.taskParticipant,
+      task.participants.map((participant) => participant.userId),
+    );
+    return this.withParticipantAvatarUrls(task, taskSummaries);
   }
 
   async updateStatusTask(
@@ -1588,9 +1607,16 @@ export class TaskService {
         'La tarea principal no existe o no está disponible.',
       );
     }
+    const taskSummaries = await getUserTaskSummaries(
+      this.prisma.taskParticipant,
+      parentTask.subtasks.flatMap((task) =>
+        task.participants.map((participant) => participant.userId),
+      ),
+    );
+
     return {
       data: parentTask.subtasks.map((task) =>
-        this.withParticipantAvatarUrls(task),
+        this.withParticipantAvatarUrls(task, taskSummaries),
       ),
     };
   }
@@ -1598,12 +1624,13 @@ export class TaskService {
   private withParticipantAvatarUrls<
     T extends {
       participants: Array<{
+        userId: string;
         user: {
           avatarPath: string | null;
         };
       }>;
     },
-  >(task: T) {
+  >(task: T, taskSummaries: ReadonlyMap<string, UserTaskSummary>) {
     return {
       ...task,
       participants: task.participants.map(({ user, ...participant }) => {
@@ -1614,6 +1641,7 @@ export class TaskService {
           user: {
             ...userData,
             avatarUrl: this.userAvatarsService.getPublicUrl(avatarPath),
+            taskSummary: taskSummaries.get(participant.userId)!,
           },
         };
       }),

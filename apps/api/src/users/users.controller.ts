@@ -11,8 +11,10 @@ import {
   Patch,
   ParseUUIDPipe,
   Param,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { AuthGuard } from '../auth/auth.guard.js';
+import { AuthGuard, type AuthenticatedRequest } from '../auth/auth.guard.js';
 import { AdminGuard } from '../auth/admin.guard.js';
 import { UsersService } from './users.service.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
@@ -111,6 +113,14 @@ export class UsersController {
 @UseGuards(AuthGuard)
 export class UserProfilesController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get('me/task-summary')
+  getMyTaskSummary(@Req() request: AuthenticatedRequest) {
+    if (!request.authUser) {
+      throw new UnauthorizedException('Debes iniciar sesión.');
+    }
+    return this.usersService.findTaskSummary(request.authUser.id);
+  }
 
   @Get(':id/profile')
   findProfile(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {

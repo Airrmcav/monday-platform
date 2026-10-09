@@ -2,9 +2,16 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { type Profile, profileSchema } from "../schemas/profile.schema";
+import {
+  type UserTaskSummary,
+  userTaskSummarySchema,
+} from "@/features/users/schemas/users.schemas";
 
 export type ProfileResult =
-  | { status: "authenticated"; user: Profile }
+  | {
+      status: "authenticated";
+      user: Profile & { taskSummary: UserTaskSummary | null };
+    }
   | { status: "unauthenticated" }
   | { status: "forbidden" }
   | { status: "unavailable" };
@@ -61,7 +68,10 @@ export async function getProfile(accessToken: string): Promise<ProfileResult> {
 
   return {
     status: "authenticated",
-    user: validation.data,
+    user: {
+      ...validation.data,
+      taskSummary: null,
+    },
   };
 }
 
@@ -77,5 +87,46 @@ export async function getCurrentProfile(): Promise<ProfileResult> {
     return { status: "unauthenticated" };
   }
 
-  return getProfile(session.access_token);
+  const profile = await getProfile(session.access_token);
+
+  if (profile.status !== "authenticated") {
+    return profile;
+  }
+
+  const apiUrl = process.env.API_URL;
+
+  if (!apiUrl) {
+    throw new Error("Falta configurar API_URL.");
+  }
+
+  try {
+    const response = await fetch(
+      `${apiUrl.replace(/\/+$/, "")}/users/me/task-summary`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+
+    if (!response.ok) {
+      return profile;
+    }
+
+    const validation = userTaskSummarySchema.safeParse(await response.json());
+
+    return {
+      ...profile,
+      user: {
+        ...profile.user,
+        taskSummary: validation.success ? validation.data : null,
+      },
+    };
+  } catch {
+    return profile;
+  }
 }

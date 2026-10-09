@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { userTaskSummarySchema } from "@/features/users/schemas/users.schemas";
 
 export const workspaceSchema = z.object({
   id: z.uuid(),
@@ -83,6 +84,7 @@ export const workspaceListItemSchema = workspaceSchema.extend({
       id: z.uuid(),
       name: z.string(),
       avatarUrl: z.string().url().nullable().optional(),
+      taskSummary: userTaskSummarySchema.optional(),
     }),
   ),
   taskCount: z.number().int().nonnegative(),

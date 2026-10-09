@@ -97,6 +97,7 @@ function ParticipantList({ participants, role }: ParticipantListProps) {
             userId={user.id}
             name={user.name}
             avatarUrl={user.avatarUrl ?? null}
+            taskSummary={user.taskSummary}
             className={`h-7 w-7 text-[10px] font-semibold ${avatarColor}`}
           />
 

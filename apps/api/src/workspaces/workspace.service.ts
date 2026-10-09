@@ -10,6 +10,7 @@ import {
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UserAvatarsService } from '../user-avatars/user-avatars.service.js';
+import { getUserTaskSummaries } from '../tasks/user-task-summary.js';
 import type { CreateWorkspaceInput } from './schemas/create-workspace.schema.js';
 import { UpdateWorkspaceInput } from './schemas/update-workspace.schema.js';
 
@@ -186,6 +187,13 @@ export class WorkspacesService {
           return { data: [] };
         }
 
+        const taskSummaries = await getUserTaskSummaries(
+          tx.taskParticipant,
+          workspaces.flatMap((workspace) =>
+            workspace.members.map((member) => member.user.id),
+          ),
+        );
+
         const taskWhere: Prisma.TaskWhereInput = {
           workspaceId: {
             in: workspaces.map((workspace) => workspace.id),
@@ -279,6 +287,7 @@ export class WorkspacesService {
                 id: user.id,
                 name: user.name,
                 avatarUrl: this.userAvatarsService.getPublicUrl(user.avatarPath),
+                taskSummary: taskSummaries.get(user.id)!,
               })),
               ...stats,
             };

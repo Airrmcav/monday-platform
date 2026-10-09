@@ -607,6 +607,7 @@ export default async function TaskPage({
                             userId={user.id}
                             name={user.name}
                             avatarUrl={user.avatarUrl ?? null}
+                            taskSummary={user.taskSummary}
                             className={`h-8 w-8 text-xs font-semibold ${group.avatarClassName}`}
                           />
 

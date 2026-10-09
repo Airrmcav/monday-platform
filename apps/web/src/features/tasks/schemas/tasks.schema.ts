@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { userTaskSummarySchema } from "@/features/users/schemas/users.schemas";
 
 export const taskStatusSchema = z.enum([
   "PENDING",
@@ -19,6 +20,7 @@ export const taskParticipantSchema = z.object({
     id: z.uuid(),
     name: z.string(),
     avatarUrl: z.string().url().nullable().optional(),
+    taskSummary: userTaskSummarySchema.optional(),
   }),
 });
 

@@ -160,6 +160,7 @@ export default function CreateUserForm() {
           <UserAvatarPicker
             name={name}
             avatarUrl={avatarPreview}
+            taskSummary={{ openTaskCount: 0, overdueTaskCount: 0 }}
             onFileSelected={(file) => {
               setAvatarError("");
               if (!file) {
