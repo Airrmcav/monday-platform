@@ -23,7 +23,7 @@ export const userProfileSchema = z.strictObject({
   name: z.string(),
   email: z.email(),
   avatarUrl: z.string().url().nullable(),
-  taskSummary: userTaskSummarySchema,
+  taskSummary: userTaskSummarySchema.nullable().optional(),
 });
 
 export type UserProfile = z.infer<typeof userProfileSchema>;
