@@ -53,6 +53,23 @@ const dashboardActivitySchema = z.strictObject({
   }),
 });
 
+const dashboardTeamUserSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string().min(1),
+  avatarUrl: z.url().nullable(),
+  status: z.enum(["ACTIVE", "INACTIVE"]),
+  taskSummary: z.strictObject({
+    openTaskCount: z.number().int().nonnegative(),
+    overdueTaskCount: z.number().int().nonnegative(),
+    tasksByStatus: z.strictObject({
+      PENDING: z.number().int().nonnegative(),
+      IN_PROGRESS: z.number().int().nonnegative(),
+      IN_REVIEW: z.number().int().nonnegative(),
+      COMPLETED: z.number().int().nonnegative(),
+    }),
+  }),
+});
+
 export const dashboardSummarySchema = z.strictObject({
   viewer: z.strictObject({
     name: z.string().min(1),
@@ -83,6 +100,8 @@ export const dashboardSummarySchema = z.strictObject({
     HIGH: z.number().int().nonnegative(),
     URGENT: z.number().int().nonnegative(),
   }),
+
+  teamUsers: z.array(dashboardTeamUserSchema),
 
   attentionTasks: z.array(dashboardTaskItemSchema).max(5),
 

@@ -132,6 +132,7 @@ export const calendarTasksResponseSchema = z.object({
       priority: taskPrioritySchema,
       dueAt: z.iso.datetime({ offset: true }),
       isBlocked: z.boolean(),
+      participants: z.array(taskParticipantSchema),
       parent: z
         .object({
           id: z.uuid(),

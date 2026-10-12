@@ -12,7 +12,10 @@ import { SupabaseAdminService } from '../auth/supabase-admin.service.js';
 import type { CreateUserInput } from './schemas/create-user.schema.js';
 import { UpdateUserInput } from './schemas/update-user.schema.js';
 import { Prisma } from '../generated/prisma/client.js';
-import { getUserTaskSummaries } from '../tasks/user-task-summary.js';
+import {
+  getUserTaskSummaries,
+  getUserTasksByStatus,
+} from '../tasks/user-task-summary.js';
 
 @Injectable()
 export class UsersService {
@@ -72,15 +75,18 @@ export class UsersService {
     ]);
 
     const userIds = users.map((user) => user.id);
-    const taskSummaries = await getUserTaskSummaries(
-      this.prisma.taskParticipant,
-      userIds,
-    );
+    const [taskSummaries, tasksByStatus] = await Promise.all([
+      getUserTaskSummaries(this.prisma.taskParticipant, userIds),
+      getUserTasksByStatus(this.prisma.taskParticipant, userIds),
+    ]);
 
     return {
       data: users.map((user) => ({
         ...this.withAvatarUrl(user),
-        taskSummary: taskSummaries.get(user.id)!,
+        taskSummary: {
+          ...taskSummaries.get(user.id)!,
+          tasksByStatus: tasksByStatus.get(user.id)!,
+        },
       })),
       pagination: {
         page,
@@ -320,6 +326,7 @@ export class UsersService {
   }
 
   async findPublicProfile(id: string) {
+    const now = new Date();
     const user = await this.prisma.user.findFirst({
       where: { id },
       select: {
@@ -334,14 +341,157 @@ export class UsersService {
       throw new NotFoundException('El usuario no existe o no está disponible.');
     }
 
-    const taskSummaries = await getUserTaskSummaries(
-      this.prisma.taskParticipant,
-      [user.id],
+    const [
+      taskSummaries,
+      tasksByStatus,
+      assignedTasks,
+      workspaces,
+      recentActivity,
+    ] = await Promise.all([
+      getUserTaskSummaries(this.prisma.taskParticipant, [user.id]),
+      getUserTasksByStatus(this.prisma.taskParticipant, [user.id]),
+      this.prisma.task.findMany({
+        where: {
+          archivedAt: null,
+          status: {
+            not: 'COMPLETED',
+          },
+          participants: {
+            some: {
+              userId: user.id,
+            },
+          },
+        },
+        orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+        take: 8,
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          priority: true,
+          dueAt: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      this.prisma.workspace.findMany({
+        where: {
+          archivedAt: null,
+          area: {
+            archivedAt: null,
+          },
+          members: {
+            some: {
+              userId: user.id,
+            },
+          },
+        },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          area: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      }),
+      this.prisma.taskHistoryEntry.findMany({
+        where: {
+          actorId: user.id,
+          task: {
+            is: {
+              archivedAt: null,
+            },
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 6,
+        select: {
+          id: true,
+          action: true,
+          createdAt: true,
+          task: {
+            select: {
+              id: true,
+              title: true,
+              workspace: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const userTaskStatus = tasksByStatus.get(user.id)!;
+    const taskSummary = taskSummaries.get(user.id)!;
+    const assignedTasksByWorkspace = await this.prisma.task.groupBy({
+      by: ['workspaceId'],
+      where: {
+        archivedAt: null,
+        workspaceId: {
+          in: workspaces.map((workspace) => workspace.id),
+        },
+        participants: {
+          some: {
+            userId: user.id,
+          },
+        },
+      },
+      _count: {
+        _all: true,
+      },
+    });
+    const assignedTasksByWorkspaceId = new Map(
+      assignedTasksByWorkspace.map(({ workspaceId, _count }) => [
+        workspaceId,
+        _count._all,
+      ]),
+    );
+    const totalTasks = Object.values(userTaskStatus).reduce(
+      (total, count) => total + count,
+      0,
     );
 
     return {
       ...this.withAvatarUrl(user),
-      taskSummary: taskSummaries.get(user.id)!,
+      taskSummary: {
+        ...taskSummary,
+        tasksByStatus: userTaskStatus,
+      },
+      profileSummary: {
+        totalTasks,
+        activeTasks:
+          userTaskStatus.PENDING +
+          userTaskStatus.IN_PROGRESS +
+          userTaskStatus.IN_REVIEW,
+        completedTasks: userTaskStatus.COMPLETED,
+        overdueTasks: taskSummary.overdueTaskCount,
+        workspaceCount: workspaces.length,
+        completionRate:
+          totalTasks === 0
+            ? 0
+            : Math.round((userTaskStatus.COMPLETED / totalTasks) * 100),
+      },
+      workspaces: workspaces.map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name,
+        areaName: workspace.area.name,
+        taskCount: assignedTasksByWorkspaceId.get(workspace.id) ?? 0,
+      })),
+      recentTasks: assignedTasks.map((task) => ({
+        ...task,
+        isOverdue: task.status !== 'COMPLETED' && task.dueAt < now,
+      })),
+      recentActivity,
     };
   }
 

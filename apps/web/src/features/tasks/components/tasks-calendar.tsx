@@ -12,7 +12,11 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
-import type { TaskPriority, TaskStatus } from "../schemas/tasks.schema";
+import type {
+  TaskParticipant,
+  TaskPriority,
+  TaskStatus,
+} from "../schemas/tasks.schema";
 
 export type CalendarTask = {
   id: string;
@@ -21,6 +25,7 @@ export type CalendarTask = {
   priority: TaskPriority;
   dueAt: string;
   isBlocked: boolean;
+  participants: TaskParticipant[];
   parentId: string | null;
   parent: {
     id: string;
@@ -158,11 +163,7 @@ function shiftMonth(value: Date, amount: number) {
     Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + amount, 1),
   );
   const lastDayOfMonth = new Date(
-    Date.UTC(
-      targetMonth.getUTCFullYear(),
-      targetMonth.getUTCMonth() + 1,
-      0,
-    ),
+    Date.UTC(targetMonth.getUTCFullYear(), targetMonth.getUTCMonth() + 1, 0),
   ).getUTCDate();
 
   targetMonth.setUTCDate(Math.min(value.getUTCDate(), lastDayOfMonth));
@@ -173,6 +174,84 @@ function shiftWeek(dateKey: string, amount: number) {
   const date = new Date(`${dateKey}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + amount * 7);
   return toDateKey(date);
+}
+
+function ParticipantAvatarStack({
+  participants,
+  compact = false,
+}: {
+  participants: TaskParticipant[];
+  compact?: boolean;
+}) {
+  if (participants.length === 0) {
+    return null;
+  }
+
+  const visibleParticipants = participants.slice(0, compact ? 2 : 5);
+  const hiddenParticipants = participants.slice(visibleParticipants.length);
+  const participantLabel = participants
+    .map(
+      ({ role, user }) =>
+        `${user.name}, ${role === "RESPONSIBLE" ? "responsable" : "colaborador"}`,
+    )
+    .join("; ");
+
+  return (
+    <span
+      role="group"
+      aria-label={`Participantes: ${participantLabel}`}
+      className="inline-flex shrink-0 items-center"
+    >
+      {visibleParticipants.map(({ role, user }, index) => {
+        const initials =
+          user.name
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => Array.from(part)[0])
+            .join("")
+            .toLocaleUpperCase("es-MX") || "?";
+
+        return (
+          <span
+            key={user.id}
+            role="img"
+            aria-label={`${user.name}, ${role === "RESPONSIBLE" ? "responsable" : "colaborador"}`}
+            title={`${user.name} · ${role === "RESPONSIBLE" ? "Responsable" : "Colaborador"}`}
+            className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 font-semibold ${
+              compact ? "h-5 w-5 text-[8px]" : "h-7 w-7 text-[10px]"
+            } ${
+              role === "RESPONSIBLE"
+                ? "border-primary bg-primary-soft text-primary"
+                : "border-review bg-review-soft text-review"
+            } ${index > 0 ? "-ml-1.5" : ""}`}
+          >
+            {initials}
+            {user.avatarUrl && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url("${user.avatarUrl}")` }}
+              />
+            )}
+          </span>
+        );
+      })}
+      {hiddenParticipants.length > 0 && (
+        <span
+          title={hiddenParticipants.map(({ user }) => user.name).join(", ")}
+          className={`inline-flex shrink-0 items-center justify-center rounded-full border-2 border-surface bg-surface-muted font-medium text-muted-foreground ${
+            compact
+              ? "-ml-1.5 h-5 min-w-5 px-1 text-[8px]"
+              : "-ml-1.5 h-7 min-w-7 px-1.5 text-[10px]"
+          }`}
+        >
+          +{hiddenParticipants.length}
+        </span>
+      )}
+    </span>
+  );
 }
 
 export default function TasksCalendar({
@@ -198,21 +277,15 @@ export default function TasksCalendar({
   const monthKey = toDateKey(month).slice(0, 7);
   const todayKey = initialToday;
 
-  const areas = useMemo(
-    () => {
-      const uniqueAreas = new Map(
-        tasks.map((task) => [
-          task.workspace.area.id,
-          task.workspace.area.name,
-        ]),
-      );
+  const areas = useMemo(() => {
+    const uniqueAreas = new Map(
+      tasks.map((task) => [task.workspace.area.id, task.workspace.area.name]),
+    );
 
-      return [...uniqueAreas].sort((left, right) =>
-        left[1].localeCompare(right[1], "es"),
-      );
-    },
-    [tasks],
-  );
+    return [...uniqueAreas].sort((left, right) =>
+      left[1].localeCompare(right[1], "es"),
+    );
+  }, [tasks]);
 
   const filteredTasks = useMemo(
     () =>
@@ -271,7 +344,9 @@ export default function TasksCalendar({
     }
 
     setSelectedDate(
-      toDateKey(shiftMonth(new Date(`${selectedDate}T00:00:00.000Z`), direction)),
+      toDateKey(
+        shiftMonth(new Date(`${selectedDate}T00:00:00.000Z`), direction),
+      ),
     );
   }
 
@@ -313,7 +388,9 @@ export default function TasksCalendar({
               vencidas
             </span>
             <span className="rounded-lg border border-border/70 bg-surface/80 px-3 py-2 text-muted-foreground">
-              <strong className="mr-1.5 text-success">{monthlyCompleted}</strong>
+              <strong className="mr-1.5 text-success">
+                {monthlyCompleted}
+              </strong>
               completadas
             </span>
           </div>
@@ -327,7 +404,9 @@ export default function TasksCalendar({
               <button
                 type="button"
                 onClick={() => navigatePeriod(-1)}
-                aria-label={view === "month" ? "Mes anterior" : "Semana anterior"}
+                aria-label={
+                  view === "month" ? "Mes anterior" : "Semana anterior"
+                }
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <ArrowLeft aria-hidden="true" size={17} />
@@ -335,7 +414,9 @@ export default function TasksCalendar({
               <button
                 type="button"
                 onClick={() => navigatePeriod(1)}
-                aria-label={view === "month" ? "Mes siguiente" : "Semana siguiente"}
+                aria-label={
+                  view === "month" ? "Mes siguiente" : "Semana siguiente"
+                }
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <ArrowRight aria-hidden="true" size={17} />
@@ -445,7 +526,11 @@ export default function TasksCalendar({
               </span>
             ))}
             <span className="inline-flex items-center gap-1.5">
-              <ShieldAlert aria-hidden="true" size={13} className="text-danger" />
+              <ShieldAlert
+                aria-hidden="true"
+                size={13}
+                className="text-danger"
+              />
               Prioridad urgente
             </span>
           </div>
@@ -453,7 +538,7 @@ export default function TasksCalendar({
 
         <div className="grid min-w-0 xl:grid-cols-[minmax(0,1fr)_300px]">
           <div className="min-w-0 overflow-x-auto">
-            <div className="min-w-[700px]">
+            <div className="min-w-175">
               <div className="grid grid-cols-7 border-b border-border/60 bg-surface-muted/40">
                 {weekdays.map((day) => (
                   <div
@@ -505,21 +590,29 @@ export default function TasksCalendar({
                       </span>
 
                       <span className="mt-1 flex flex-col gap-1">
-                        {dayTasks.slice(0, view === "week" ? 8 : 3).map((task) => (
-                          <span
-                            key={task.id}
-                            title={`${task.title} · ${statusMeta[task.status].label}`}
-                            className={`block truncate rounded px-1.5 py-1 text-[10px] font-medium leading-tight sm:text-[11px] ${
-                              task.priority === "URGENT" &&
-                              task.status !== "COMPLETED"
-                                ? "bg-danger-soft text-danger"
-                                : statusMeta[task.status].softColor
-                            }`}
-                          >
-                            {task.parentId ? "↳ " : ""}
-                            {task.title}
-                          </span>
-                        ))}
+                        {dayTasks
+                          .slice(0, view === "week" ? 8 : 3)
+                          .map((task) => (
+                            <span
+                              key={task.id}
+                              title={`${task.title} · ${statusMeta[task.status].label}`}
+                              className={`flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium leading-tight sm:text-[11px] ${
+                                task.priority === "URGENT" &&
+                                task.status !== "COMPLETED"
+                                  ? "bg-danger-soft text-danger"
+                                  : statusMeta[task.status].softColor
+                              }`}
+                            >
+                              <span className="min-w-0 flex-1 truncate">
+                                {task.parentId ? "↳ " : ""}
+                                {task.title}
+                              </span>
+                              <ParticipantAvatarStack
+                                participants={task.participants}
+                                compact
+                              />
+                            </span>
+                          ))}
                         {dayTasks.length > (view === "week" ? 8 : 3) && (
                           <span className="px-1 text-[10px] font-semibold text-primary">
                             +{dayTasks.length - (view === "week" ? 8 : 3)} más
@@ -545,7 +638,9 @@ export default function TasksCalendar({
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
                 {selectedTasks.length}{" "}
-                {selectedTasks.length === 1 ? "tarea programada" : "tareas programadas"}
+                {selectedTasks.length === 1
+                  ? "tarea programada"
+                  : "tareas programadas"}
               </p>
             </div>
 
@@ -561,11 +656,11 @@ export default function TasksCalendar({
                 </p>
               </div>
             ) : (
-              <ul className="max-h-[620px] divide-y divide-border/50 overflow-y-auto">
+              <ul className="max-h-155 divide-y divide-border/50 overflow-y-auto">
                 {selectedTasks.map((task) => (
                   <li key={task.id} className="p-3.5">
                     <Link
-                      href={`/tasks/${task.id}`}
+                      href={`max-h-155.id}`}
                       className="block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <div className="flex items-start gap-2.5">
@@ -606,8 +701,19 @@ export default function TasksCalendar({
                           </div>
                           <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
                             <Clock3 aria-hidden="true" size={11} />
-                            Entrega {taskDateFormatter.format(new Date(task.dueAt))}
+                            Entrega{" "}
+                            {taskDateFormatter.format(new Date(task.dueAt))}
                           </p>
+                          {task.participants.length > 0 && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-[10px] text-muted-foreground">
+                                Participantes
+                              </span>
+                              <ParticipantAvatarStack
+                                participants={task.participants}
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </Link>

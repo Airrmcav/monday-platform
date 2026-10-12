@@ -2,6 +2,11 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { getDashboardPeriodBounds } from './dashboard-period.js';
+import { UserAvatarsService } from '../user-avatars/user-avatars.service.js';
+import {
+  getUserTaskSummaries,
+  getUserTasksByStatus,
+} from '../tasks/user-task-summary.js';
 
 type DashboardViewer = {
   id: string;
@@ -10,7 +15,10 @@ type DashboardViewer = {
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userAvatarsService: UserAvatarsService,
+  ) {}
 
   private async getActiveViewer(viewer: DashboardViewer) {
     const currentUser = await this.prisma.user.findUnique({
@@ -110,106 +118,102 @@ export class DashboardService {
       priorityCounts,
       tasks,
     ] = await Promise.all([
-        this.prisma.task.count({
-          where: taskWhere,
-        }),
+      this.prisma.task.count({
+        where: taskWhere,
+      }),
 
-        this.prisma.task.count({
-          where: {
-            ...taskWhere,
-            status: 'COMPLETED',
-          },
-        }),
+      this.prisma.task.count({
+        where: {
+          ...taskWhere,
+          status: 'COMPLETED',
+        },
+      }),
 
-        this.prisma.task.count({
-          where: {
-            ...taskWhere,
-            status: 'IN_PROGRESS',
-          },
-        }),
+      this.prisma.task.count({
+        where: {
+          ...taskWhere,
+          status: 'IN_PROGRESS',
+        },
+      }),
 
-        this.prisma.task.count({
-          where: {
-            ...taskWhere,
-            dueAt: {
-              gte: startAt,
-              lt: new Date(Math.min(endAt.getTime(), now.getTime())),
-            },
-            status: {
-              not: 'COMPLETED',
-            },
+      this.prisma.task.count({
+        where: {
+          ...taskWhere,
+          dueAt: {
+            gte: startAt,
+            lt: new Date(Math.min(endAt.getTime(), now.getTime())),
           },
-        }),
+          status: {
+            not: 'COMPLETED',
+          },
+        },
+      }),
 
-        this.prisma.task.count({
-          where: {
-            ...taskWhere,
-            status: {
-              not: 'COMPLETED',
-            },
+      this.prisma.task.count({
+        where: {
+          ...taskWhere,
+          status: {
+            not: 'COMPLETED',
           },
-        }),
+        },
+      }),
 
-        this.prisma.task.count({
-          where: {
-            ...taskWhere,
-            status: {
-              not: 'COMPLETED',
-            },
-            priority: {
-              in: ['HIGH', 'URGENT'],
-            },
+      this.prisma.task.count({
+        where: {
+          ...taskWhere,
+          status: {
+            not: 'COMPLETED',
           },
-        }),
+          priority: {
+            in: ['HIGH', 'URGENT'],
+          },
+        },
+      }),
 
-        this.prisma.task.groupBy({
-          by: ['priority'],
-          where: {
-            ...taskWhere,
-            status: {
-              not: 'COMPLETED',
-            },
+      this.prisma.task.groupBy({
+        by: ['priority'],
+        where: {
+          ...taskWhere,
+          status: {
+            not: 'COMPLETED',
           },
-          _count: {
-            _all: true,
-          },
-        }),
+        },
+        _count: {
+          _all: true,
+        },
+      }),
 
-        this.prisma.task.findMany({
-          where: {
-            ...taskWhere,
-            ...focusWhere,
-          },
-          orderBy:
-            focus === 'all'
-              ? [
-                  { priority: 'desc' },
-                  { dueAt: 'asc' },
-                  { id: 'asc' },
-                ]
-              : [{ dueAt: 'asc' }, { id: 'asc' }],
-          take: 20,
-          select: {
-            id: true,
-            title: true,
-            dueAt: true,
-            priority: true,
-            status: true,
-            workspace: {
-              select: {
-                id: true,
-                name: true,
-                area: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
+      this.prisma.task.findMany({
+        where: {
+          ...taskWhere,
+          ...focusWhere,
+        },
+        orderBy:
+          focus === 'all'
+            ? [{ priority: 'desc' }, { dueAt: 'asc' }, { id: 'asc' }]
+            : [{ dueAt: 'asc' }, { id: 'asc' }],
+        take: 20,
+        select: {
+          id: true,
+          title: true,
+          dueAt: true,
+          priority: true,
+          status: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              area: {
+                select: {
+                  id: true,
+                  name: true,
                 },
               },
             },
           },
-        }),
-      ]);
+        },
+      }),
+    ]);
 
     const priorityBreakdown = {
       LOW: 0,
@@ -574,6 +578,8 @@ export class DashboardService {
       tasksByPriority[item.priority] = item._count._all;
     }
 
+    const teamUsers = await this.getTeamStatus();
+
     return {
       viewer: {
         name: currentUser.name,
@@ -596,9 +602,39 @@ export class DashboardService {
 
       tasksByStatus,
       tasksByPriority,
+      teamUsers,
       attentionTasks,
       upcomingTasks,
       recentActivity,
     };
+  }
+
+  private async getTeamStatus() {
+    const users = await this.prisma.user.findMany({
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        name: true,
+        avatarPath: true,
+        status: true,
+      },
+    });
+    const userIds = users.map((user) => user.id);
+
+    const [taskSummaries, tasksByStatus] = await Promise.all([
+      getUserTaskSummaries(this.prisma.taskParticipant, userIds),
+      getUserTasksByStatus(this.prisma.taskParticipant, userIds),
+    ]);
+
+    return users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      avatarUrl: this.userAvatarsService.getPublicUrl(user.avatarPath),
+      status: user.status,
+      taskSummary: {
+        ...taskSummaries.get(user.id)!,
+        tasksByStatus: tasksByStatus.get(user.id)!,
+      },
+    }));
   }
 }

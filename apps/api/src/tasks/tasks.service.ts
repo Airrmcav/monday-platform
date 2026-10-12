@@ -491,6 +491,22 @@ export class TaskService {
         priority: true,
         dueAt: true,
         isBlocked: true,
+        participants: {
+          orderBy: {
+            userId: 'asc',
+          },
+          select: {
+            userId: true,
+            role: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarPath: true,
+              },
+            },
+          },
+        },
         parent: {
           select: {
             id: true,
@@ -512,7 +528,18 @@ export class TaskService {
       },
     });
 
-    return { data: tasks };
+    const taskSummaries = await getUserTaskSummaries(
+      this.prisma.taskParticipant,
+      tasks.flatMap((task) =>
+        task.participants.map((participant) => participant.userId),
+      ),
+    );
+
+    return {
+      data: tasks.map((task) =>
+        this.withParticipantAvatarUrls(task, taskSummaries),
+      ),
+    };
   }
 
   async findOne(id: string, viewer: TaskViewer) {

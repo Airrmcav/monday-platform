@@ -52,6 +52,7 @@ export default async function CalendarPage() {
     priority: task.priority,
     dueAt: task.dueAt,
     isBlocked: task.isBlocked,
+    participants: task.participants,
     parentId: task.parentId,
     parent: task.parent,
     workspace: task.workspace,

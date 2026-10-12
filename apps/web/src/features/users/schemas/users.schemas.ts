@@ -3,6 +3,14 @@ import { z } from "zod";
 export const userTaskSummarySchema = z.object({
   openTaskCount: z.number().int().nonnegative(),
   overdueTaskCount: z.number().int().nonnegative(),
+  tasksByStatus: z
+    .object({
+      PENDING: z.number().int().nonnegative(),
+      IN_PROGRESS: z.number().int().nonnegative(),
+      IN_REVIEW: z.number().int().nonnegative(),
+      COMPLETED: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 export type UserTaskSummary = z.infer<typeof userTaskSummarySchema>;
@@ -23,7 +31,65 @@ export const userProfileSchema = z.strictObject({
   name: z.string(),
   email: z.email(),
   avatarUrl: z.string().url().nullable(),
-  taskSummary: userTaskSummarySchema.nullable().optional(),
+  taskSummary: userTaskSummarySchema.extend({
+    tasksByStatus: z.object({
+      PENDING: z.number().int().nonnegative(),
+      IN_PROGRESS: z.number().int().nonnegative(),
+      IN_REVIEW: z.number().int().nonnegative(),
+      COMPLETED: z.number().int().nonnegative(),
+    }),
+  }),
+  profileSummary: z.strictObject({
+    totalTasks: z.number().int().nonnegative(),
+    activeTasks: z.number().int().nonnegative(),
+    completedTasks: z.number().int().nonnegative(),
+    overdueTasks: z.number().int().nonnegative(),
+    workspaceCount: z.number().int().nonnegative(),
+    completionRate: z.number().int().min(0).max(100),
+  }),
+  workspaces: z.array(
+    z.strictObject({
+      id: z.string().uuid(),
+      name: z.string(),
+      areaName: z.string(),
+      taskCount: z.number().int().nonnegative(),
+    }),
+  ),
+  recentTasks: z.array(
+    z.strictObject({
+      id: z.string().uuid(),
+      title: z.string(),
+      status: z.enum(["PENDING", "IN_PROGRESS", "IN_REVIEW", "COMPLETED"]),
+      priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]),
+      dueAt: z.iso.datetime({ offset: true }),
+      isOverdue: z.boolean(),
+      workspace: z.strictObject({
+        id: z.string().uuid(),
+        name: z.string(),
+      }),
+    }),
+  ),
+  recentActivity: z.array(
+    z.strictObject({
+      id: z.string().uuid(),
+      action: z.enum([
+        "CREATED",
+        "UPDATED",
+        "STATUS_CHANGED",
+        "BLOCKED",
+        "UNBLOCKED",
+        "BLOCK_REASON_CHANGED",
+      ]),
+      createdAt: z.iso.datetime({ offset: true }),
+      task: z.strictObject({
+        id: z.string().uuid(),
+        title: z.string(),
+        workspace: z.strictObject({
+          name: z.string(),
+        }),
+      }),
+    }),
+  ),
 });
 
 export type UserProfile = z.infer<typeof userProfileSchema>;
