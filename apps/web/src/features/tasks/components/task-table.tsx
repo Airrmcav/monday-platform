@@ -8,13 +8,15 @@ import {
   Clock3,
   LockKeyhole,
   Search,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
 
 import type { Task, TaskStatus } from "../schemas/tasks.schema";
 import TaskTableRow from "./task-table-row";
 import TaskPriorityBadge from "./task-priority-badge";
+import TaskTableFilters, {
+  type TaskAttentionFilter,
+} from "./task-table-filters";
 import UserAvatar from "@/features/users/components/user-avatar";
 
 type TaskTableProps = {
@@ -172,9 +174,8 @@ export default function TasksTable({ tasks, asOf }: TaskTableProps) {
   const [priorityFilter, setPriorityFilter] = useState<
     Task["priority"] | "ALL"
   >("ALL");
-  const [attentionFilter, setAttentionFilter] = useState<
-    "ALL" | "OVERDUE" | "UPCOMING" | "BLOCKED"
-  >("ALL");
+  const [attentionFilter, setAttentionFilter] =
+    useState<TaskAttentionFilter>("ALL");
   const nextSevenDays = asOf + 7 * 24 * 60 * 60 * 1000;
 
   const filteredTasks = useMemo(() => {
@@ -264,96 +265,22 @@ export default function TasksTable({ tasks, asOf }: TaskTableProps) {
         </span>
       </header>
 
-      <div className="grid gap-3 border-b border-border/60 bg-background/40 p-4 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_180px_190px_auto]">
-        <label className="relative block">
-          <span className="sr-only">Buscar tareas y participantes</span>
-          <Search
-            aria-hidden="true"
-            size={17}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar tarea o persona…"
-            className="h-10 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
-          />
-        </label>
-
-        <label>
-          <span className="sr-only">Filtrar por estado</span>
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as TaskStatus | "ALL")
-            }
-            className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="ALL">Todos los estados</option>
-            {Object.entries(statusStyles).map(([value, status]) => (
-              <option key={value} value={value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span className="sr-only">Filtrar por prioridad</span>
-          <select
-            value={priorityFilter}
-            onChange={(event) =>
-              setPriorityFilter(event.target.value as Task["priority"] | "ALL")
-            }
-            className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="ALL">Todas las prioridades</option>
-            <option value="URGENT">Urgente</option>
-            <option value="HIGH">Alta</option>
-            <option value="NORMAL">Normal</option>
-            <option value="LOW">Baja</option>
-          </select>
-        </label>
-
-        <label>
-          <span className="sr-only">Filtrar por atención</span>
-          <select
-            value={attentionFilter}
-            onChange={(event) =>
-              setAttentionFilter(
-                event.target.value as
-                  | "ALL"
-                  | "OVERDUE"
-                  | "UPCOMING"
-                  | "BLOCKED",
-              )
-            }
-            className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="ALL">Cualquier fecha</option>
-            <option value="OVERDUE">Vencidas</option>
-            <option value="UPCOMING">Próximos 7 días</option>
-            <option value="BLOCKED">Bloqueadas</option>
-          </select>
-        </label>
-
-        {hasActiveFilters ? (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <X aria-hidden="true" size={15} />
-            Limpiar
-          </button>
-        ) : (
-          <span className="hidden items-center justify-center gap-1.5 px-2 text-xs text-muted-foreground xl:inline-flex">
-            <SlidersHorizontal aria-hidden="true" size={14} />
-            Filtros
-          </span>
-        )}
-      </div>
+      <TaskTableFilters
+        search={search}
+        statusFilter={statusFilter}
+        priorityFilter={priorityFilter}
+        attentionFilter={attentionFilter}
+        hasActiveFilters={hasActiveFilters}
+        statusOptions={Object.entries(statusStyles).map(([value, status]) => ({
+          value: value as TaskStatus,
+          label: status.label,
+        }))}
+        onSearchChange={setSearch}
+        onStatusChange={setStatusFilter}
+        onPriorityChange={setPriorityFilter}
+        onAttentionChange={setAttentionFilter}
+        onClearFilters={clearFilters}
+      />
 
       {tasks.length === 0 ? (
         <div className="flex flex-col items-center px-6 py-14 text-center">

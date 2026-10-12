@@ -13,6 +13,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { UserAvatarsModule } from './user-avatars/user-avatars.module.js';
 import { ReportsModule } from './reports/reports.module.js';
+import { MeetingsModule } from './meetings/meetings.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ReportsModule } from './reports/reports.module.js';
     DashboardModule,
     UserAvatarsModule,
     ReportsModule,
+    MeetingsModule,
     ThrottlerModule.forRoot([
       {
         name: 'default',

@@ -48,6 +48,7 @@ export default function Sidebar({
     pathname.startsWith("/workspaces/");
   const isAreas = pathname === "/areas" || pathname.startsWith("/areas/");
   const isReports = pathname === "/reports";
+  const isMeetings = pathname === "/meetings";
   const activeAreaId = areas.find(
     (area) =>
       pathname === `/areas/${area.id}` ||
@@ -185,6 +186,24 @@ export default function Sidebar({
 
           <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>
             Calendario
+          </span>
+        </Link>
+
+        <Link
+          href="/meetings"
+          onClick={onNavigate}
+          title={collapsed ? "Reuniones" : undefined}
+          aria-current={isMeetings ? "page" : undefined}
+          className={`${itemClasses} ${itemLayout} ${
+            isMeetings
+              ? "bg-primary-soft font-semibold text-primary before:absolute before:inset-y-2 before:left-0 before:w-0.75 before:rounded-full before:bg-primary"
+              : "text-foreground hover:bg-surface-hover"
+          }`}
+        >
+          <CalendarClock aria-hidden="true" size={19} className="shrink-0" />
+
+          <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>
+            Reuniones
           </span>
         </Link>
 

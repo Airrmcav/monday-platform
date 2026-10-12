@@ -3,15 +3,22 @@ import Link from "next/link";
 
 import type { NavigationUser } from "../navigation.types";
 import MobileNavigation from "./mobile-navigation";
+import MeetingNotificationsPanel from "./meeting-notifications-panel";
 import NotificationsPanel from "./notifications-panel";
 import UserMenu from "./user-menu";
 import type { TaskNotification } from "@/features/task-notifications/schemas/task-notifications.schema";
+import type { MeetingNotification } from "@/features/meeting-notifications/schemas/meeting-notifications.schema";
 import type { WorkspaceNavigationArea } from "../navigation.types";
 
 type NavbarProps = {
   user: NavigationUser;
   notifications: {
     initialNotifications: TaskNotification[];
+    initialUnreadCount: number;
+    unavailable: boolean;
+  };
+  meetingNotifications: {
+    initialNotifications: MeetingNotification[];
     initialUnreadCount: number;
     unavailable: boolean;
   };
@@ -24,6 +31,7 @@ type NavbarProps = {
 export default function Navbar({
   user,
   notifications,
+  meetingNotifications,
   workspaceNavigation,
 }: NavbarProps) {
   return (
@@ -76,6 +84,7 @@ export default function Navbar({
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <NotificationsPanel {...notifications} />
+        <MeetingNotificationsPanel {...meetingNotifications} />
 
         <span aria-hidden="true" className="mx-1 h-7 w-px bg-border sm:mx-2" />
 

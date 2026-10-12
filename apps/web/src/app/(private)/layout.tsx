@@ -6,6 +6,7 @@ import AppShell from "@/features/navigation/components/app-shell";
 import { getAreas } from "@/features/areas/services/areas.service";
 import { getWorkspaces } from "@/features/workspaces/services/workspaces.service";
 import { getTaskNotifications } from "@/features/task-notifications/task-notifications.service";
+import { getMeetingNotifications } from "@/features/meeting-notifications/meeting-notifications.service";
 
 type PrivateLayoutProps = {
   children: ReactNode;
@@ -30,8 +31,12 @@ export default async function PrivateLayout({ children }: PrivateLayoutProps) {
     );
   }
 
-  const notificationsResult = await getTaskNotifications();
-  const areasResult = await getAreas();
+  const [notificationsResult, meetingNotificationsResult, areasResult] =
+    await Promise.all([
+      getTaskNotifications(),
+      getMeetingNotifications(),
+      getAreas(),
+    ]);
 
   if (areasResult.status === "unauthenticated") {
     redirect("/login");
@@ -90,6 +95,18 @@ export default async function PrivateLayout({ children }: PrivateLayoutProps) {
 
     unavailable: notificationsResult.status === "unavailable",
   };
+  const meetingNotifications = {
+    initialNotifications:
+      meetingNotificationsResult.status === "success"
+        ? meetingNotificationsResult.data.data
+        : [],
+    initialUnreadCount:
+      meetingNotificationsResult.status === "success"
+        ? meetingNotificationsResult.data.unreadCount
+        : 0,
+    unavailable:
+      meetingNotificationsResult.status !== "success",
+  };
 
   return (
     <AppShell
@@ -102,6 +119,7 @@ export default async function PrivateLayout({ children }: PrivateLayoutProps) {
         isAdmin: result.user.isAdmin,
       }}
       notifications={notifications}
+      meetingNotifications={meetingNotifications}
       workspaceNavigation={{
         areas: workspaceNavigationAreas,
         unavailable: workspaceNavigationUnavailable,

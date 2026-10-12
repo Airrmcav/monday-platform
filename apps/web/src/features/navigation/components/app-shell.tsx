@@ -10,12 +10,18 @@ import type { WorkspaceNavigationArea } from "../navigation.types";
 import Navbar from "./navbar";
 import Sidebar from "./sidebar";
 import type { TaskNotification } from "@/features/task-notifications/schemas/task-notifications.schema";
+import type { MeetingNotification } from "@/features/meeting-notifications/schemas/meeting-notifications.schema";
 
 type AppShellProps = {
   children: ReactNode;
   user: NavigationUser;
   notifications: {
     initialNotifications: TaskNotification[];
+    initialUnreadCount: number;
+    unavailable: boolean;
+  };
+  meetingNotifications: {
+    initialNotifications: MeetingNotification[];
     initialUnreadCount: number;
     unavailable: boolean;
   };
@@ -29,6 +35,7 @@ export default function AppShell({
   children,
   user,
   notifications,
+  meetingNotifications,
   workspaceNavigation,
 }: AppShellProps) {
   const pathname = usePathname();
@@ -48,6 +55,7 @@ export default function AppShell({
       <Navbar
         user={user}
         notifications={notifications}
+        meetingNotifications={meetingNotifications}
         workspaceNavigation={workspaceNavigation}
       />
       <aside
@@ -116,6 +124,7 @@ export default function AppShell({
 function getPageTitle(pathname: string) {
   if (pathname === "/dashboard") return "Inicio";
   if (pathname === "/calendar") return "Calendario";
+  if (pathname === "/meetings") return "Reuniones";
   if (pathname === "/reports") return "Reportes";
   if (pathname === "/my-work" || pathname.startsWith("/my-work/")) {
     return "Mi trabajo";

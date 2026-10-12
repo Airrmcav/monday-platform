@@ -28,6 +28,23 @@ enum TaskNotificationType {
   TASK_OVERDUE
 }
 
+enum MeetingStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+enum MeetingParticipantStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+}
+
+enum MeetingReminderType {
+  DAY_BEFORE
+  SAME_DAY
+}
+
 model User {
   id          String     @id @default(uuid()) @db.Uuid
   authSubject String     @unique @db.Uuid
@@ -39,15 +56,18 @@ model User {
   createdAt   DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime   @updatedAt @db.Timestamptz(3)
 
-  receivedTaskNotifications TaskNotification[] @relation("TaskNotificationRecipient")
-  sentTaskNotifications     TaskNotification[] @relation("TaskNotificationActor")
-  uploadedTaskAttachments   TaskAttachment[]   @relation("TaskAttachmentUploader")
-  taskComments              TaskComment[]      @relation("TaskCommentAuthor")
-  createdWorkspaces         Workspace[]        @relation("WorkspaceCreator")
+  receivedTaskNotifications TaskNotification[]    @relation("TaskNotificationRecipient")
+  sentTaskNotifications     TaskNotification[]    @relation("TaskNotificationActor")
+  uploadedTaskAttachments   TaskAttachment[]      @relation("TaskAttachmentUploader")
+  taskComments              TaskComment[]         @relation("TaskCommentAuthor")
+  createdWorkspaces         Workspace[]           @relation("WorkspaceCreator")
   workspaceMemberships      WorkspaceMember[]
-  createdTasks              Task[]             @relation("TaskCreator")
+  createdTasks              Task[]                @relation("TaskCreator")
   taskParticipations        TaskParticipant[]
-  taskHistoryEntries        TaskHistoryEntry[] @relation("TaskHistoryActor")
+  taskHistoryEntries        TaskHistoryEntry[]    @relation("TaskHistoryActor")
+  organizedMeetings         Meeting[]             @relation("MeetingOrganizer")
+  meetingParticipations     MeetingParticipant[]
+  meetingNotifications      MeetingNotification[]
 
   @@map("app_users")
 }
@@ -161,6 +181,62 @@ model Task {
   @@map("tasks")
 }
 
+model Meeting {
+  id          String        @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  startsAt    DateTime      @db.Timestamptz(3)
+  endsAt      DateTime      @db.Timestamptz(3)
+  timeZone    String        @default("America/Mexico_City")
+  location    String?
+  meetingUrl  String?
+  status      MeetingStatus @default(SCHEDULED)
+  organizerId String        @db.Uuid
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+
+  organizer     User                  @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: Restrict)
+  participants  MeetingParticipant[]
+  notifications MeetingNotification[]
+
+  @@index([startsAt, status])
+  @@index([organizerId, startsAt])
+  @@map("meetings")
+}
+
+model MeetingParticipant {
+  meetingId String                   @db.Uuid
+  userId    String                   @db.Uuid
+  status    MeetingParticipantStatus @default(INVITED)
+  createdAt DateTime                 @default(now()) @db.Timestamptz(3)
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Restrict)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([meetingId, userId])
+  @@index([userId, status])
+  @@map("meeting_participants")
+}
+
+model MeetingNotification {
+  id           String              @id @default(uuid()) @db.Uuid
+  meetingId    String              @db.Uuid
+  recipientId  String              @db.Uuid
+  type         MeetingReminderType
+  scheduledFor DateTime            @db.Timestamptz(3)
+  sentAt       DateTime?           @db.Timestamptz(3)
+  readAt       DateTime?           @db.Timestamptz(3)
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Restrict)
+  recipient User    @relation(fields: [recipientId], references: [id], onDelete: Restrict)
+
+  @@unique([meetingId, recipientId, type, scheduledFor])
+  @@index([recipientId, sentAt, readAt, createdAt])
+  @@index([sentAt, scheduledFor])
+  @@map("meeting_notifications")
+}
+
 model TaskParticipant {
   taskId    String              @db.Uuid
   userId    String              @db.Uuid
@@ -227,10 +303,10 @@ model TaskNotification {
   task      Task  @relation(fields: [taskId], references: [id], onDelete: Restrict)
   actor     User? @relation("TaskNotificationActor", fields: [actorId], references: [id], onDelete: Restrict)
 
+  @@unique([taskId, recipientId, type, dedupeKey])
   @@index([recipientId, readAt, createdAt, id])
   @@index([taskId, createdAt, id])
   @@index([actorId])
-  @@unique([taskId, recipientId, type, dedupeKey])
   @@map("task_notifications")
 }
 
