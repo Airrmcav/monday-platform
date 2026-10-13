@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 import {
   CreateUserInput,
   createUserSchema,
@@ -75,22 +75,11 @@ export async function getUsers({
     throw new Error("Parámetros de paginación inválidos.");
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   const normalizedSearch = search.trim();
 
@@ -114,18 +103,14 @@ export async function getUsers({
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/users?${searchParams}`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10000),
+    response = await api.request(`${apiUrl}/users?${searchParams}`, {
+      headers: {
+        Accept: "application/json",
       },
-    );
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10000),
+    });
   } catch {
     return { status: "unavailable" };
   }
@@ -174,32 +159,20 @@ export async function createUser(
     };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}/users`, {
+    response = await api.request(`${apiUrl}/users`, {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify(validation.data),
       cache: "no-store",
@@ -275,36 +248,22 @@ export async function updateUser(
     };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
+    return { status: "unauthenticated" };
   }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
-    return {
-      status: "unauthenticated",
-    };
-  }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/users/${encodeURIComponent(idValidation.data)}`,
+    response = await api.request(
+      `${apiUrl}/users/${encodeURIComponent(idValidation.data)}`,
       {
         method: "PATCH",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(validation.data),
         cache: "no-store",
@@ -369,33 +328,20 @@ export async function getUser(id: string): Promise<GetUserResult> {
     };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL");
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
+    return { status: "unauthenticated" };
   }
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
-    return {
-      status: "unauthenticated",
-    };
-  }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/users/${encodeURIComponent(idValidation.data)}`,
+    response = await api.request(
+      `${apiUrl}/users/${encodeURIComponent(idValidation.data)}`,
       {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",
@@ -451,31 +397,20 @@ export async function getUserProfile(
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/users/${encodeURIComponent(idValidation.data)}/profile`,
+    response = await api.request(
+      `${apiUrl}/users/${encodeURIComponent(idValidation.data)}/profile`,
       {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",

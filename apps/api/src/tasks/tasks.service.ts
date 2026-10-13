@@ -31,6 +31,26 @@ const TASK_STATUS_LABELS: Record<string, string> = {
   COMPLETED: 'Completada',
 };
 
+function getStatusHistoryChange(changes: Prisma.JsonValue) {
+  if (
+    typeof changes !== 'object' ||
+    changes === null ||
+    Array.isArray(changes)
+  ) {
+    return null;
+  }
+
+  const status = changes.status;
+  if (typeof status !== 'object' || status === null || Array.isArray(status)) {
+    return null;
+  }
+
+  return {
+    from: typeof status.before === 'string' ? status.before : null,
+    to: typeof status.after === 'string' ? status.after : null,
+  };
+}
+
 @Injectable()
 export class TaskService {
   constructor(
@@ -540,6 +560,194 @@ export class TaskService {
         this.withParticipantAvatarUrls(task, taskSummaries),
       ),
     };
+  }
+
+  async getAssistantContext(viewer: TaskViewer) {
+    const where = this.getAccessibleTaskWhere(viewer);
+    const now = new Date();
+
+    const openWhere: Prisma.TaskWhereInput = {
+      ...where,
+      status: { not: 'COMPLETED' },
+    };
+
+    const [statusCounts, priorityCounts, openBlockedCount, tasks, workload] =
+      await Promise.all([
+        this.prisma.task.groupBy({
+          by: ['status'],
+          where,
+          _count: { _all: true },
+        }),
+        this.prisma.task.groupBy({
+          by: ['priority'],
+          where,
+          _count: { _all: true },
+        }),
+        this.prisma.task.count({
+          where: {
+            ...where,
+            isBlocked: true,
+            status: { not: 'COMPLETED' },
+          },
+        }),
+        this.prisma.task.findMany({
+          where,
+          orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+          take: 120,
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            priority: true,
+            dueAt: true,
+            isBlocked: true,
+            updatedAt: true,
+            participants: {
+              orderBy: { userId: 'asc' },
+              select: {
+                role: true,
+                user: { select: { name: true } },
+              },
+            },
+            history: {
+              where: { action: 'STATUS_CHANGED' },
+              orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+              take: 3,
+              select: { createdAt: true, changes: true },
+            },
+            workspace: {
+              select: {
+                name: true,
+                area: { select: { name: true } },
+              },
+            },
+          },
+        }),
+
+        viewer.isAdmin
+          ? this.getWorkloadByUser(openWhere, now)
+          : Promise.resolve(null),
+      ]);
+
+    const totalTasks = statusCounts.reduce(
+      (total, item) => total + item._count._all,
+      0,
+    );
+
+    return {
+      generatedAt: now.toISOString(),
+      scope: viewer.isAdmin
+        ? 'TODAS_LAS_TAREAS'
+        : 'SOLO_TAREAS_DONDE_PARTICIPA_EL_USUARIO',
+      statusLabels: TASK_STATUS_LABELS,
+      totals: {
+        tasks: totalTasks,
+        byStatus: Object.fromEntries(
+          statusCounts.map((item) => [item.status, item._count._all]),
+        ),
+        byPriority: Object.fromEntries(
+          priorityCounts.map((item) => [item.priority, item._count._all]),
+        ),
+        openBlocked: openBlockedCount,
+      },
+
+      ...(workload ? { workloadByUser: workload } : {}),
+      taskListTruncated: totalTasks > tasks.length,
+      tasks: tasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+        dueAt: task.dueAt.toISOString(),
+        isBlocked: task.isBlocked,
+        updatedAt: task.updatedAt.toISOString(),
+        responsibles: task.participants
+          .filter((participant) => participant.role === 'RESPONSIBLE')
+          .map((participant) => participant.user.name),
+        collaborators: task.participants
+          .filter((participant) => participant.role === 'COLLABORATOR')
+          .map((participant) => participant.user.name),
+        history: task.history.flatMap((entry) => {
+          const change = getStatusHistoryChange(entry.changes);
+          return change
+            ? [{ at: entry.createdAt.toISOString(), ...change }]
+            : [];
+        }),
+        workspace: task.workspace.name,
+        area: task.workspace.area.name,
+      })),
+    };
+  }
+
+  private async getWorkloadByUser(openWhere: Prisma.TaskWhereInput, now: Date) {
+    const activeUser = { status: 'ACTIVE' as const };
+
+    const [byRole, overdue, blocked] = await Promise.all([
+      this.prisma.taskParticipant.groupBy({
+        by: ['userId', 'role'],
+        where: { task: openWhere, user: activeUser },
+        _count: { _all: true },
+      }),
+      this.prisma.taskParticipant.groupBy({
+        by: ['userId'],
+        where: {
+          task: { ...openWhere, dueAt: { lt: now } },
+          user: activeUser,
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.taskParticipant.groupBy({
+        by: ['userId'],
+        where: {
+          task: { ...openWhere, isBlocked: true },
+          user: activeUser,
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const userIds = [...new Set(byRole.map((item) => item.userId))];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const nameById = new Map(users.map((user) => [user.id, user.name]));
+    const overdueById = new Map(
+      overdue.map((item) => [item.userId, item._count._all]),
+    );
+    const blockedById = new Map(
+      blocked.map((item) => [item.userId, item._count._all]),
+    );
+
+    const perUser = new Map<
+      string,
+      { pending: number; asResponsible: number; asCollaborator: number }
+    >();
+    for (const item of byRole) {
+      const entry = perUser.get(item.userId) ?? {
+        pending: 0,
+        asResponsible: 0,
+        asCollaborator: 0,
+      };
+      entry.pending += item._count._all;
+      if (item.role === 'RESPONSIBLE') {
+        entry.asResponsible += item._count._all;
+      } else {
+        entry.asCollaborator += item._count._all;
+      }
+      perUser.set(item.userId, entry);
+    }
+
+    return [...perUser.entries()]
+      .map(([userId, counts]) => ({
+        user: nameById.get(userId) ?? 'Usuario desconocido',
+        ...counts,
+        overdue: overdueById.get(userId) ?? 0,
+        blocked: blockedById.get(userId) ?? 0,
+      }))
+      .sort((a, b) => b.pending - a.pending || a.user.localeCompare(b.user));
   }
 
   async findOne(id: string, viewer: TaskViewer) {

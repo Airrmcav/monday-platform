@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 import { reportsDataSchema, type ReportsData } from "./schemas/reports.schema";
 
 export type GetReportsDataResult =
@@ -10,29 +10,18 @@ export type GetReportsDataResult =
   | { status: "unavailable" };
 
 export async function getReportsData(): Promise<GetReportsDataResult> {
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}/reports`, {
+    response = await api.request(`${apiUrl}/reports`, {
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${session.access_token}`,
       },
       cache: "no-store",
       redirect: "error",

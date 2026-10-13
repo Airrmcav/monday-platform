@@ -12,5 +12,6 @@ import { MeetingsService } from './meetings.service.js';
   imports: [AuthModule, PrismaModule, UserAvatarsModule],
   controllers: [MeetingsController, MeetingNotificationsController],
   providers: [MeetingsService, MeetingNotificationsService],
+  exports: [MeetingsService],
 })
 export class MeetingsModule {}

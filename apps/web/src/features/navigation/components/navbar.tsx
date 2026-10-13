@@ -9,6 +9,7 @@ import UserMenu from "./user-menu";
 import type { TaskNotification } from "@/features/task-notifications/schemas/task-notifications.schema";
 import type { MeetingNotification } from "@/features/meeting-notifications/schemas/meeting-notifications.schema";
 import type { WorkspaceNavigationArea } from "../navigation.types";
+import AssistantChat from "@/features/assistant/components/assistant-chat";
 
 type NavbarProps = {
   user: NavigationUser;
@@ -83,6 +84,7 @@ export default function Navbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <AssistantChat />
         <NotificationsPanel {...notifications} />
         <MeetingNotificationsPanel {...meetingNotifications} />
 

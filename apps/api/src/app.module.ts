@@ -14,6 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module.js';
 import { UserAvatarsModule } from './user-avatars/user-avatars.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { MeetingsModule } from './meetings/meetings.module.js';
+import { AssistantModule } from './assistant/assistant.module.js';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { MeetingsModule } from './meetings/meetings.module.js';
     UserAvatarsModule,
     ReportsModule,
     MeetingsModule,
+    AssistantModule,
     ThrottlerModule.forRoot([
       {
         name: 'default',

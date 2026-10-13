@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 import {
   meetingNotificationSchema,
   meetingNotificationsResponseSchema,
@@ -17,33 +17,20 @@ export type MeetingNotificationsResult =
   | { status: "unavailable" };
 
 async function requestApi(path: string, method?: "PATCH") {
-  const apiUrl = process.env.API_URL;
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" as const };
   }
 
   let response: Response;
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}${path}`, {
-      ...(method ? { method } : {}),
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${session.access_token}`,
+    response = await api.request(
+      path,
+      {
+        ...(method ? { method } : {}),
       },
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(10_000),
-    });
+      10_000,
+    );
   } catch (error) {
     console.error("[meeting-notifications] Falló la petición al API:", {
       path,
@@ -84,9 +71,7 @@ async function requestApi(path: string, method?: "PATCH") {
 export async function getMeetingNotifications(): Promise<MeetingNotificationsResult> {
   const result = await requestApi("/meeting-notifications");
   if (result.status !== "success" || !("data" in result) || !result.data) {
-    return result.status === "success"
-      ? { status: "unavailable" }
-      : result;
+    return result.status === "success" ? { status: "unavailable" } : result;
   }
 
   return { status: "success", data: result.data };

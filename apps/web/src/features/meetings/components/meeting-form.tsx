@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { LoaderCircle } from "lucide-react";
 
 import type {
   Meeting,
@@ -32,7 +33,7 @@ export default function MeetingForm({
   );
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} aria-busy={pending} className="space-y-5">
       {state.error && (
         <p
           role="alert"
@@ -42,17 +43,17 @@ export default function MeetingForm({
         </p>
       )}
 
-      <Field label="Nombre de la reunión" error={state.fieldErrors?.title}>
-        <input
-          required
-          minLength={3}
-          maxLength={200}
-          name="title"
-          defaultValue={meeting?.title}
-          className={inputClassName}
-          placeholder="Ej. Revisión semanal del equipo"
-        />
-      </Field>
+        <Field label="Nombre de la reunión" error={state.fieldErrors?.title}>
+          <input
+            required
+            minLength={3}
+            maxLength={200}
+            name="title"
+            defaultValue={meeting?.title}
+            className={inputClassName}
+            placeholder="Ej. Revisión semanal del equipo"
+          />
+        </Field>
 
       <Field label="Descripción" error={state.fieldErrors?.description}>
         <textarea
@@ -148,12 +149,18 @@ export default function MeetingForm({
       <p className="text-xs text-muted-foreground">
         Las fechas se capturan en la zona horaria de Ciudad de México.
       </p>
-
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex cursor-pointer min-h-10 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex cursor-pointer min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60"
       >
+        {pending && (
+          <LoaderCircle
+            aria-hidden="true"
+            size={16}
+            className="animate-spin motion-reduce:animate-none"
+          />
+        )}
         {pending
           ? "Guardando…"
           : meeting

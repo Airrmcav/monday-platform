@@ -16,5 +16,6 @@ import { UserAvatarsModule } from '../user-avatars/user-avatars.module.js';
   ],
   controllers: [TasksController],
   providers: [TaskService],
+  exports: [TaskService],
 })
 export class TaskModule {}

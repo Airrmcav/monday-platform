@@ -101,13 +101,6 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   }
 
   const tasksResult = await getTasks(workspace.id);
-  console.info("[WorkspacePage] Tareas:", {
-    status: tasksResult.status,
-    total:
-      tasksResult.status === "success"
-        ? tasksResult.result.data.length
-        : undefined,
-  });
 
   if (tasksResult.status === "unauthenticated") {
     redirect("/login");
@@ -126,19 +119,19 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
     tasksResult.status === "success"
       ? [
           {
-          label: "Tareas",
+            label: "Tareas",
             value: tasksResult.result.data.length,
             icon: ClipboardList,
             color: "bg-primary-soft text-primary",
           },
-        {
-          label: "Abiertas",
-          value: tasksResult.result.data.filter(
-            (task) => task.status !== "COMPLETED",
-          ).length,
-          icon: ListTodo,
-          color: "bg-progress-soft text-progress",
-        },
+          {
+            label: "Abiertas",
+            value: tasksResult.result.data.filter(
+              (task) => task.status !== "COMPLETED",
+            ).length,
+            icon: ListTodo,
+            color: "bg-progress-soft text-progress",
+          },
           {
             label: "Completadas",
             value: tasksResult.result.data.filter(
