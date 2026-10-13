@@ -1661,6 +1661,161 @@ export class TaskService {
     throw new ServiceUnavailableException('No se pudo actualizar la tarea.');
   }
 
+  async deleteTask(id: string, viewer: TaskViewer) {
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const currentUser = await tx.user.findUnique({
+              where: { id: viewer.id },
+              select: {
+                id: true,
+                status: true,
+                isAdmin: true,
+              },
+            });
+
+            if (!currentUser || currentUser.status !== 'ACTIVE') {
+              throw new ForbiddenException(
+                'No tienes acceso activo a esta plataforma.',
+              );
+            }
+
+            if (!currentUser.isAdmin) {
+              throw new ForbiddenException(
+                'Solo un administrador puede eliminar definitivamente una tarea.',
+              );
+            }
+
+            const task = await tx.task.findFirst({
+              where: {
+                ...this.getAccessibleTaskWhere(currentUser),
+                id,
+              },
+              select: {
+                id: true,
+                workspaceId: true,
+                parentId: true,
+                title: true,
+              },
+            });
+
+            if (!task) {
+              throw new NotFoundException(
+                'La tarea no existe o no está disponible.',
+              );
+            }
+            const workspaceTasks = await tx.task.findMany({
+              where: {
+                workspaceId: task.workspaceId,
+              },
+              select: {
+                id: true,
+                parentId: true,
+              },
+            });
+
+            const childrenByParent = new Map<string, string[]>();
+
+            for (const item of workspaceTasks) {
+              if (!item.parentId) continue;
+
+              const children = childrenByParent.get(item.parentId) ?? [];
+
+              children.push(item.id);
+              childrenByParent.set(item.parentId, children);
+            }
+
+            const orderedTaskIds: string[] = [];
+            const visited = new Set<string>();
+
+            const collectDescendants = (taskId: string) => {
+              if (visited.has(taskId)) {
+                throw new BadRequestException(
+                  'Se detectó una relación circular entre tareas.',
+                );
+              }
+
+              visited.add(taskId);
+
+              for (const childId of childrenByParent.get(taskId) ?? []) {
+                collectDescendants(childId);
+              }
+
+              orderedTaskIds.push(taskId);
+            };
+
+            collectDescendants(task.id);
+            await tx.taskAttachment.deleteMany({
+              where: {
+                taskId: { in: orderedTaskIds },
+              },
+            });
+
+            await tx.taskComment.deleteMany({
+              where: {
+                taskId: { in: orderedTaskIds },
+              },
+            });
+
+            await tx.taskHistoryEntry.deleteMany({
+              where: {
+                taskId: { in: orderedTaskIds },
+              },
+            });
+
+            await tx.taskNotification.deleteMany({
+              where: {
+                taskId: { in: orderedTaskIds },
+              },
+            });
+
+            await tx.taskParticipant.deleteMany({
+              where: {
+                taskId: { in: orderedTaskIds },
+              },
+            });
+
+            for (const taskId of orderedTaskIds) {
+              await tx.task.delete({
+                where: { id: taskId },
+              });
+            }
+
+            return {
+              id: task.id,
+              workspaceId: task.workspaceId,
+              parentId: task.parentId,
+              deletedTaskIds: orderedTaskIds,
+              deletedCount: orderedTaskIds.length,
+            };
+          },
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          },
+        );
+      } catch (error) {
+        const isTransactionConflict =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034';
+
+        if (!isTransactionConflict) {
+          throw error;
+        }
+
+        if (attempt === maxAttempts) {
+          throw new ServiceUnavailableException(
+            'Hubo cambios simultáneos. Intenta eliminar la tarea nuevamente.',
+          );
+        }
+      }
+    }
+
+    throw new ServiceUnavailableException('No se pudo eliminar la tarea.');
+  }
+
   async findHistory(id: string, viewer: TaskViewer, query: TaskHistoryQuery) {
     const { page, pageSize } = query;
 

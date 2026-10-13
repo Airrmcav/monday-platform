@@ -151,9 +151,7 @@ export const calendarTasksResponseSchema = z.object({
   ),
 });
 
-export type CalendarTasksResponse = z.infer<
-  typeof calendarTasksResponseSchema
->;
+export type CalendarTasksResponse = z.infer<typeof calendarTasksResponseSchema>;
 
 export const taskDetailSchema = taskSchema.extend({
   workspace: z.object({
@@ -296,3 +294,13 @@ export const updateTaskResponseSchema = z.object({
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 
 export type UpdateTaskResponse = z.infer<typeof updateTaskResponseSchema>;
+
+export const deleteTaskResponseSchema = z.object({
+  id: taskSchema.shape.id,
+  workspaceId: taskSchema.shape.id,
+  parentId: taskSchema.shape.id.nullable(),
+  deletedTaskIds: z.array(taskSchema.shape.id).min(1),
+  deletedCount: z.number().int().positive(),
+});
+
+export type DeleteTaskResponse = z.infer<typeof deleteTaskResponseSchema>;
