@@ -31,6 +31,17 @@
 $ pnpm install
 ```
 
+## MYCAV assistant
+
+The assistant sends a limited summary of the authenticated user's accessible
+tasks and meetings to the Gemini API. Configure `GEMINI_API_KEY` as a secret in
+the API environment; do not add it to the web application's environment or
+commit it to the repository. `GEMINI_MODEL` is optional and defaults to
+`gemini-2.5-flash`.
+
+The assistant endpoint remains unavailable until `GEMINI_API_KEY` is configured.
+Review Google's Gemini API data-use terms before enabling it in production.
+
 ## Compile and run the project
 
 ```bash

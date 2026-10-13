@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createApiClient } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/server";
 import { type Profile, profileSchema } from "../schemas/profile.schema";
 import {
@@ -17,25 +18,16 @@ export type ProfileResult =
   | { status: "unavailable" };
 
 export async function getProfile(accessToken: string): Promise<ProfileResult> {
-  const apiUrl = process.env.API_URL;
+  const api = await createApiClient(accessToken);
 
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
+  if (api.status === "unauthenticated") {
+    return { status: "unauthenticated" };
   }
 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}/auth/me`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(10000),
-    });
+    response = await api.request("/auth/me", { method: "GET" }, 10_000);
   } catch {
     return { status: "unavailable" };
   }
@@ -93,25 +85,14 @@ export async function getCurrentProfile(): Promise<ProfileResult> {
     return profile;
   }
 
-  const apiUrl = process.env.API_URL;
+  const api = await createApiClient(session.access_token);
 
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
+  if (api.status === "unauthenticated") {
+    return profile;
   }
 
   try {
-    const response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/users/me/task-summary`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10000),
-      },
-    );
+    const response = await api.request("/users/me/task-summary", {}, 10_000);
 
     if (!response.ok) {
       return profile;

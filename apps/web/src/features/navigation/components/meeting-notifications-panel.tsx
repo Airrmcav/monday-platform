@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, Check, CheckCheck, Video, X } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  CheckCheck,
+  LoaderCircle,
+  Video,
+  X,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
@@ -203,6 +210,19 @@ export default function MeetingNotificationsPanel({
             className="border-b border-border px-5 py-3 text-sm text-muted-foreground sm:px-6"
           >
             No pudimos cargar las notificaciones de reuniones.
+          </p>
+        )}
+        {isPending && (
+          <p
+            role="status"
+            className="flex items-center gap-2 border-b border-border/60 bg-surface-muted/40 px-5 py-2.5 text-xs text-muted-foreground sm:px-6"
+          >
+            <LoaderCircle
+              aria-hidden="true"
+              size={14}
+              className="animate-spin motion-reduce:animate-none"
+            />
+            Actualizando notificaciones…
           </p>
         )}
 

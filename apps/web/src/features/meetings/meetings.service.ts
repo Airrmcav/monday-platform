@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 import {
   createMeetingSchema,
   meetingParticipantsSchema,
@@ -58,37 +58,16 @@ async function requestApi(
   path: string,
   init?: RequestInit,
 ): Promise<ApiResult> {
-  const apiUrl = process.env.API_URL;
+  const api = await createApiClient();
 
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}${path}`, {
-      ...init,
-      headers: {
-        Accept: "application/json",
-        ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `Bearer ${session.access_token}`,
-        ...init?.headers,
-      },
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(15_000),
-    });
+    response = await api.request(path, init, 15_000);
   } catch (error) {
     console.error("[meetings] Falló la petición al API:", {
       path,

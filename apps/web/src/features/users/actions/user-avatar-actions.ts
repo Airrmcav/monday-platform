@@ -2,12 +2,16 @@
 
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 
 const userIdSchema = z.string().uuid();
 const uploadInputSchema = z.strictObject({
   contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
-  sizeBytes: z.number().int().positive().max(2 * 1024 * 1024),
+  sizeBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(2 * 1024 * 1024),
 });
 const uploadIntentSchema = z.strictObject({
   bucket: z.string().min(1),
@@ -85,19 +89,9 @@ async function requestAvatarAction<T>(
   body: unknown,
   responseSchema: z.ZodType<T>,
 ): Promise<UserAvatarActionResult<T>> {
-  const apiUrl = process.env.API_URL;
+  const api = await createApiClient();
 
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  if (api.status === "unauthenticated") {
     return {
       success: false,
       error: "Tu sesión expiró. Inicia sesión nuevamente.",
@@ -108,18 +102,14 @@ async function requestAvatarAction<T>(
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}${path}`, {
-      method,
-      headers: {
-        Accept: "application/json",
-        ...(body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `Bearer ${session.access_token}`,
+    response = await api.request(
+      path,
+      {
+        method,
+        ...(body ? { body: JSON.stringify(body) } : {}),
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(15_000),
-    });
+      15_000,
+    );
   } catch {
     return {
       success: false,

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 import {
   DashboardSummary,
   MyWorkSummary,
@@ -31,33 +31,21 @@ export async function getDashboardSummary(
   period: DashboardPeriod,
   date: string,
 ): Promise<GetDashboardSummaryResult> {
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    const url = new URL(`${apiUrl.replace(/\/+$/, "")}/dashboard/summary`);
+    const url = new URL(`${apiUrl}/dashboard/summary`);
     url.searchParams.set("period", period);
     url.searchParams.set("date", date);
-    response = await fetch(url, {
+    response = await api.request(url, {
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${session.access_token}`,
       },
       cache: "no-store",
       redirect: "error",
@@ -104,38 +92,24 @@ export async function getMyWorkSummary(
   period: DashboardPeriod = "month",
   date: string = getTodayDateKey(),
 ): Promise<GetMyWorkSummaryResult> {
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    const url = new URL(
-      `${apiUrl.replace(/\/+$/, "")}/dashboard/my-work`,
-    );
+    const url = new URL(`${apiUrl}/dashboard/my-work`);
     url.searchParams.set("period", period);
     url.searchParams.set("date", date);
     if (focus !== "all") {
       url.searchParams.set("focus", focus);
     }
-    response = await fetch(url, {
+    response = await api.request(url, {
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${session.access_token}`,
       },
       cache: "no-store",
       redirect: "error",

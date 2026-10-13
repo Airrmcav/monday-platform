@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 
 import {
   taskNotificationSchema,
@@ -38,22 +38,11 @@ export async function getTaskNotifications({
     return { status: "unavailable" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   const query = new URLSearchParams({
     page: String(page),
@@ -64,18 +53,14 @@ export async function getTaskNotifications({
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/task-notifications?${query}`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10_000),
+    response = await api.request(`${apiUrl}/task-notifications?${query}`, {
+      headers: {
+        Accept: "application/json",
       },
-    );
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    });
   } catch {
     return { status: "unavailable" };
   }
@@ -128,33 +113,21 @@ export async function markTaskNotificationAsRead(
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/task-notifications/${validation.data}/read`,
+    response = await api.request(
+      `${apiUrl}/task-notifications/${validation.data}/read`,
       {
         method: "PATCH",
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",
@@ -191,39 +164,24 @@ export type MarkAllTaskNotificationsAsReadResult =
   | { status: "unavailable" };
 
 export async function markAllTaskNotificationsAsRead(): Promise<MarkAllTaskNotificationsAsReadResult> {
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/task-notifications/read-all`,
-      {
-        method: "PATCH",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10_000),
+    response = await api.request(`${apiUrl}/task-notifications/read-all`, {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
       },
-    );
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    });
   } catch {
     return { status: "unavailable" };
   }

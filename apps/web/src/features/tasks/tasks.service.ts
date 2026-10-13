@@ -23,7 +23,7 @@ import {
   UpdateTaskInput,
   UpdateTaskResponse,
 } from "./schemas/tasks.schema";
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 import {
   TaskHistoryResponse,
   taskHistoryResponseSchema,
@@ -58,32 +58,20 @@ export async function createTask(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}/tasks`, {
+    response = await api.request(`${apiUrl}/tasks`, {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify(validation.data),
       cache: "no-store",
@@ -170,21 +158,11 @@ export async function getTasks(workspaceId: string): Promise<GetTasksResult> {
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-  if (!apiUrl) {
-    throw new Error("Falta Configurar API_URL");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   const query = new URLSearchParams({
     workspaceId: validation.data,
@@ -193,18 +171,14 @@ export async function getTasks(workspaceId: string): Promise<GetTasksResult> {
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks?${query.toString()}`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10000),
+    response = await api.request(`${apiUrl}/tasks?${query.toString()}`, {
+      headers: {
+        Accept: "application/json",
       },
-    );
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10000),
+    });
   } catch {
     console.error("[getTasks] Falló la conexión con NestJS.");
     return { status: "unavailable" };
@@ -263,29 +237,18 @@ export type GetCalendarTasksResult =
   | { status: "unavailable" };
 
 export async function getCalendarTasks(): Promise<GetCalendarTasksResult> {
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}/tasks/calendar`, {
+    response = await api.request(`${apiUrl}/tasks/calendar`, {
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${session.access_token}`,
       },
       cache: "no-store",
       redirect: "error",
@@ -340,37 +303,23 @@ export async function getTask(id: string): Promise<GetTaskResult> {
   if (!validation.success) {
     return { status: "not-found" };
   }
-  const apiUrl = process.env.API_URL;
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${validation.data}`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10000),
+    response = await api.request(`${apiUrl}/tasks/${validation.data}`, {
+      headers: {
+        Accept: "application/json",
       },
-    );
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10000),
+    });
   } catch {
     return { status: "unavailable" };
   }
@@ -434,34 +383,22 @@ export async function updateStatusTask(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${idValidation.data}/status`,
+    response = await api.request(
+      `${apiUrl}/tasks/${idValidation.data}/status`,
       {
         method: "PATCH",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(inputValidation.data),
         cache: "no-store",
@@ -535,41 +472,26 @@ export async function updateBlockTask(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${idValidation.data}/block`,
-      {
-        method: "PATCH",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(inputValidation.data),
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(15000),
+    response = await api.request(`${apiUrl}/tasks/${idValidation.data}/block`, {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(inputValidation.data),
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(15000),
+    });
   } catch {
     return { status: "unavailable" };
   }
@@ -636,41 +558,26 @@ export async function updateTask(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${idValidation.data}`,
-      {
-        method: "PATCH",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(inputValidation.data),
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(15000),
+    response = await api.request(`${apiUrl}/tasks/${idValidation.data}`, {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(inputValidation.data),
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(15000),
+    });
   } catch {
     return { status: "unavailable" };
   }
@@ -746,22 +653,11 @@ export async function getTaskHistory(
     throw new Error("Parámetros de paginación inválidos.");
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   const searchParams = new URLSearchParams({
     page: String(page),
@@ -771,12 +667,11 @@ export async function getTaskHistory(
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${idValidation.data}/history?${searchParams.toString()}`,
+    response = await api.request(
+      `${apiUrl}/tasks/${idValidation.data}/history?${searchParams.toString()}`,
       {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",
@@ -831,32 +726,20 @@ export async function getSubtask(parentId: string): Promise<GetTasksResult> {
     };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${idValidation.data}/subtasks`,
+    response = await api.request(
+      `${apiUrl}/tasks/${idValidation.data}/subtasks`,
       {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",
@@ -932,22 +815,11 @@ export async function getTaskComments(
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   const query = new URLSearchParams({
     page: String(page),
@@ -957,12 +829,11 @@ export async function getTaskComments(
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${taskIdValidation.data}/comments?${query}`,
+    response = await api.request(
+      `${apiUrl}/tasks/${taskIdValidation.data}/comments?${query}`,
       {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",
@@ -1034,36 +905,22 @@ export async function createTaskComment(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL");
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
+    return { status: "unauthenticated" };
   }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
-    return {
-      status: "unauthenticated",
-    };
-  }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${taskIdValidation.data}/comments`,
+    response = await api.request(
+      `${apiUrl}/tasks/${taskIdValidation.data}/comments`,
       {
         method: "POST",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(inputValidation.data),
         cache: "no-store",
@@ -1146,34 +1003,22 @@ export async function createTaskAttachmentUploadIntents(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${taskIdValidation.data}/attachments/upload-intents`,
+    response = await api.request(
+      `${apiUrl}/tasks/${taskIdValidation.data}/attachments/upload-intents`,
       {
         method: "POST",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(inputValidation.data),
         cache: "no-store",
@@ -1245,32 +1090,19 @@ export async function getTaskAttachmentDownloadUrl(
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${taskIdValidation.data}/attachments/${attachmentIdValidation.data}/download`,
+    response = await api.request(
+      `${apiUrl}/tasks/${taskIdValidation.data}/attachments/${attachmentIdValidation.data}/download`,
       {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: {},
         cache: "no-store",
         redirect: "manual",
         signal: AbortSignal.timeout(10_000),
@@ -1325,33 +1157,20 @@ export async function cancelTaskAttachmentUpload(
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/tasks/${taskIdValidation.data}/attachments/${attachmentIdValidation.data}`,
+    response = await api.request(
+      `${apiUrl}/tasks/${taskIdValidation.data}/attachments/${attachmentIdValidation.data}`,
       {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: {},
         cache: "no-store",
         redirect: "error",
         signal: AbortSignal.timeout(15_000),

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 import {
   CreateWorkspaceInput,
   createWorkspaceSchema,
@@ -34,22 +34,11 @@ export async function getWorkspaces(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   const query = new URLSearchParams({
     areaId: validation.data,
@@ -58,18 +47,14 @@ export async function getWorkspaces(
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/workspaces?${query.toString()}`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10000),
+    response = await api.request(`${apiUrl}/workspaces?${query.toString()}`, {
+      headers: {
+        Accept: "application/json",
       },
-    );
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10000),
+    });
   } catch {
     return { status: "unavailable" };
   }
@@ -127,32 +112,20 @@ export async function createWorkspace(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl.replace(/\/+$/, "")}/workspaces`, {
+    response = await api.request(`${apiUrl}/workspaces`, {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify(validation.data),
       cache: "no-store",
@@ -218,32 +191,20 @@ export async function getWorkspace(id: string): Promise<GetWorkspaceResult> {
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/workspaces/${encodeURIComponent(validation.data)}`,
+    response = await api.request(
+      `${apiUrl}/workspaces/${encodeURIComponent(validation.data)}`,
       {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",
@@ -306,32 +267,20 @@ export async function getWorkspaceMembers(
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/workspaces/${encodeURIComponent(validation.data)}/members`,
+    response = await api.request(
+      `${apiUrl}/workspaces/${encodeURIComponent(validation.data)}/members`,
       {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",
@@ -394,32 +343,20 @@ export async function getWorkspaceforEdit(
     return { status: "not-found" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/workspaces/${idValidation.data}/edit`,
+    response = await api.request(
+      `${apiUrl}/workspaces/${idValidation.data}/edit`,
       {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         cache: "no-store",
         redirect: "error",
@@ -491,41 +428,26 @@ export async function updateWorkspace(
     return { status: "invalid" };
   }
 
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL.");
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
+  const apiUrl = api.baseUrl;
 
   let response: Response;
 
   try {
-    response = await fetch(
-      `${apiUrl.replace(/\/+$/, "")}/workspaces/${idValidation.data}`,
-      {
-        method: "PATCH",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(inputValidation.data),
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(15000),
+    response = await api.request(`${apiUrl}/workspaces/${idValidation.data}`, {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(inputValidation.data),
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(15000),
+    });
   } catch {
     return { status: "unavailable" };
   }

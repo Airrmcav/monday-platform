@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type ComponentProps, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 import { formatInTimeZone } from "date-fns-tz";
 import {
   ArrowUpRight,
@@ -11,6 +12,7 @@ import {
   CircleHelp,
   CircleX,
   Clock3,
+  LoaderCircle,
   MapPin,
   Pencil,
   Trash2,
@@ -362,9 +364,10 @@ export default function MeetingList({
                         className="flex-1 sm:flex-none"
                       >
                         <input type="hidden" name="status" value={status} />
-                        <button
+                        <MeetingSubmitButton
                           type="submit"
                           aria-pressed={ownParticipation.status === status}
+                          pendingLabel="Guardando respuesta…"
                           className={getResponseButtonClassName(
                             status,
                             ownParticipation.status === status,
@@ -377,7 +380,7 @@ export default function MeetingList({
                             <X aria-hidden="true" size={16} />
                           )}
                           {status === "ACCEPTED" ? "Asistiré" : "No asistiré"}
-                        </button>
+                        </MeetingSubmitButton>
                       </form>
                     ))}
                   </div>
@@ -410,13 +413,14 @@ export default function MeetingList({
                   </details>
 
                   <form action={cancelMeetingAction.bind(null, meeting.id)}>
-                    <button
+                    <MeetingSubmitButton
                       type="submit"
+                      pendingLabel="Cancelando reunión…"
                       className={`inline-flex ${compact ? "min-h-9 text-xs" : "min-h-10 text-sm"} cursor-pointer items-center gap-2 rounded-md px-3 py-2 font-medium text-danger hover:bg-danger-soft ${focusRing}`}
                     >
                       <X aria-hidden="true" size={15} />
                       Cancelar reunión
-                    </button>
+                    </MeetingSubmitButton>
                   </form>
                 </div>
               )}
@@ -513,17 +517,52 @@ function MeetingDeleteControl({
             Conservar reunión
           </button>
           <form action={deleteMeetingAction.bind(null, meetingId)}>
-            <button
+            <MeetingSubmitButton
               type="submit"
+              pendingLabel="Eliminando…"
               className={`inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-danger bg-danger px-4 py-2 text-sm font-semibold text-white transition hover:bg-danger/90 ${focusRing} sm:w-auto`}
             >
               <Trash2 aria-hidden="true" size={15} />
               Sí, eliminar
-            </button>
+            </MeetingSubmitButton>
           </form>
         </div>
       </dialog>
     </>
+  );
+}
+
+function MeetingSubmitButton({
+  children,
+  pendingLabel,
+  className,
+  ...buttonProps
+}: Omit<ComponentProps<"button">, "children"> & {
+  children: ReactNode;
+  pendingLabel: string;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      {...buttonProps}
+      disabled={pending || buttonProps.disabled}
+      aria-busy={pending}
+      className={`${className ?? ""} disabled:cursor-wait disabled:opacity-60`}
+    >
+      {pending ? (
+        <>
+          <LoaderCircle
+            aria-hidden="true"
+            size={15}
+            className="animate-spin motion-reduce:animate-none"
+          />
+          {pendingLabel}
+        </>
+      ) : (
+        children
+      )}
+    </button>
   );
 }
 

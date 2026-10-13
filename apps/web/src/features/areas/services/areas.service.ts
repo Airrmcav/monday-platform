@@ -7,7 +7,7 @@ import {
   CreateAreaInput,
   createAreaSchema,
 } from "../schemas/areas.schemas";
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient } from "@/lib/api-client";
 import { unknown } from "zod";
 
 export type GetAreasResult =
@@ -24,50 +24,17 @@ export type CreateAreaResult =
   | { status: "invalid" }
   | { status: "unavailable" };
 
-function getApiUrl(): string {
-  const apiUrl = process.env.API_URL;
-
-  if (!apiUrl) {
-    throw new Error("Falta configurar API_URL");
-  }
-  return apiUrl.replace(/\/+$/, "");
-}
-
-async function getAccessToken(): Promise<string | null> {
-  const supabase = await createClient();
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error || !session) {
-    return null;
-  }
-
-  return session.access_token;
-}
-
 export async function getAreas(): Promise<GetAreasResult> {
-  const apiUrl = process.env.API_URL;
-  const token = await getAccessToken();
+  const api = await createApiClient();
 
-  if (!token) {
+  if (api.status === "unauthenticated") {
     return { status: "unauthenticated" };
   }
 
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl}/areas`, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(10000),
-    });
+    response = await api.request("/areas", {}, 10_000);
   } catch {
     return { status: "unavailable" };
   }
@@ -114,10 +81,9 @@ export async function createArea(
     };
   }
 
-  const apiUrl = process.env.API_URL;
-  const token = await getAccessToken();
+  const api = await createApiClient();
 
-  if (!token) {
+  if (api.status === "unauthenticated") {
     return {
       status: "unauthenticated",
     };
@@ -125,18 +91,14 @@ export async function createArea(
   let response: Response;
 
   try {
-    response = await fetch(`${apiUrl}/areas`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    response = await api.request(
+      "/areas",
+      {
+        method: "POST",
+        body: JSON.stringify(validation.data),
       },
-      body: JSON.stringify(validation.data),
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(15000),
-    });
+      15_000,
+    );
   } catch {
     return {
       status: "unavailable",

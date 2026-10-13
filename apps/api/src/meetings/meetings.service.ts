@@ -52,6 +52,75 @@ export class MeetingsService {
     return meetings.map((meeting) => this.withAvatarUrls(meeting));
   }
 
+  async getAssistantContext(viewerId: string) {
+    const access = {
+      OR: [
+        { organizerId: viewerId },
+        { participants: { some: { userId: viewerId } } },
+      ],
+    };
+    const now = new Date();
+    const recentCutoff = new Date(now);
+    recentCutoff.setDate(recentCutoff.getDate() - 30);
+
+    const [upcoming, recent] = await Promise.all([
+      this.prisma.meeting.findMany({
+        where: {
+          ...access,
+          startsAt: { gte: now },
+          status: 'SCHEDULED',
+        },
+        orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+        take: 40,
+        select: {
+          title: true,
+          startsAt: true,
+          endsAt: true,
+          timeZone: true,
+          status: true,
+          organizer: { select: { name: true } },
+          participants: {
+            orderBy: { user: { name: 'asc' } },
+            select: {
+              status: true,
+              user: { select: { name: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.meeting.findMany({
+        where: {
+          ...access,
+          startsAt: { gte: recentCutoff, lt: now },
+        },
+        orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
+        take: 10,
+        select: {
+          title: true,
+          startsAt: true,
+          endsAt: true,
+          timeZone: true,
+          status: true,
+          organizer: { select: { name: true } },
+        },
+      }),
+    ]);
+
+    return {
+      upcoming: upcoming.map((meeting) => ({
+        ...meeting,
+        startsAt: meeting.startsAt.toISOString(),
+        endsAt: meeting.endsAt.toISOString(),
+      })),
+      recent: recent.map((meeting) => ({
+        ...meeting,
+        startsAt: meeting.startsAt.toISOString(),
+        endsAt: meeting.endsAt.toISOString(),
+      })),
+      upcomingTruncated: upcoming.length === 40,
+    };
+  }
+
   async findParticipants() {
     const users = await this.prisma.user.findMany({
       where: { status: 'ACTIVE' },
