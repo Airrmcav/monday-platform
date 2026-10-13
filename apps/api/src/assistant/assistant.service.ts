@@ -181,10 +181,15 @@ export class AssistantService {
         status: response.status,
         body: body.slice(0, 500),
       });
+
+      if (response.status === 429) {
+        throw new ServiceUnavailableException(
+          'Se ha superado el límite de peticiones de la IA. Por favor, configura la facturación del proyecto o espera un momento.',
+        );
+      }
+
       throw new ServiceUnavailableException(
-        response.status === 503 || response.status === 429
-          ? 'El asistente está saturado en este momento. Intenta de nuevo en unos segundos.'
-          : 'El asistente no está disponible en este momento.',
+        'El asistente no está disponible en este momento.',
       );
     }
 

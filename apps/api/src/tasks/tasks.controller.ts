@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -147,6 +148,21 @@ export class TasksController {
       throw new UnauthorizedException('Debes iniciar sesión.');
     }
     return this.tasksService.updateTask(id, input, {
+      id: request.authUser.id,
+      isAdmin: request.authUser.isAdmin,
+    });
+  }
+
+  @Delete(':id')
+  deleteTask(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', new ParseUUIDPipe({ version: '4' }))
+    id: string,
+  ) {
+    if (!request.authUser) {
+      throw new UnauthorizedException('Debes iniciar sesión.');
+    }
+    return this.tasksService.deleteTask(id, {
       id: request.authUser.id,
       isAdmin: request.authUser.isAdmin,
     });

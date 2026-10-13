@@ -22,6 +22,8 @@ import {
   updateTaskSchema,
   UpdateTaskInput,
   UpdateTaskResponse,
+  deleteTaskResponseSchema,
+  DeleteTaskResponse,
 } from "./schemas/tasks.schema";
 import { createApiClient } from "@/lib/api-client";
 import {
@@ -618,6 +620,72 @@ export async function updateTask(
     status: "success",
     task: taskValidation.data,
   };
+}
+
+export type DeleteTaskResult =
+  | { status: "success"; task: DeleteTaskResponse }
+  | { status: "unauthenticated" }
+  | { status: "forbidden" }
+  | { status: "not-found" }
+  | { status: "invalid" }
+  | { status: "unavailable" };
+
+export async function deleteTask(id: string): Promise<DeleteTaskResult> {
+  const idValidation = taskSchema.shape.id.safeParse(id);
+
+  if (!idValidation.success) {
+    return { status: "not-found" };
+  }
+
+  const api = await createApiClient();
+  if (api.status === "unauthenticated") {
+    return { status: "unauthenticated" };
+  }
+
+  let response: Response;
+
+  try {
+    response = await api.request(`${api.baseUrl}/tasks/${idValidation.data}`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch {
+    return { status: "unavailable" };
+  }
+
+  switch (response.status) {
+    case 400:
+      return { status: "invalid" };
+    case 401:
+      return { status: "unauthenticated" };
+    case 403:
+      return { status: "forbidden" };
+    case 404:
+      return { status: "not-found" };
+  }
+
+  if (response.status !== 200) {
+    return { status: "unavailable" };
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    return { status: "unavailable" };
+  }
+
+  const validation = deleteTaskResponseSchema.safeParse(payload);
+
+  if (!validation.success) {
+    return { status: "unavailable" };
+  }
+
+  return { status: "success", task: validation.data };
 }
 
 export type GetTaskHistoryResult =

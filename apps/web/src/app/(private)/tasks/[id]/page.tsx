@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import TaskDeleteButton from "@/features/tasks/components/task-delete-button";
 
 type TaskPageProps = {
   params: Promise<{
@@ -156,6 +157,13 @@ export default async function TaskPage({
   ) {
     notFound();
   }
+
+  const subtaskCount =
+    subtasksResult?.status === "success"
+      ? subtasksResult.result.data.length
+      : 0;
+
+  const canDeleteTask = profile.user.isAdmin;
 
   const query = await searchParams;
 
@@ -339,14 +347,26 @@ export default async function TaskPage({
                 </div>
               </div>
 
-              {canEditTask && (
-                <Link
-                  href={`/tasks/${task.id}/edit`}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-primary/20 bg-surface px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  <FilePenLine aria-hidden="true" size={17} />
-                  Editar tarea
-                </Link>
+              {(canEditTask || canDeleteTask) && (
+                <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
+                  {canEditTask && (
+                    <Link
+                      href={`/tasks/${task.id}/edit`}
+                      className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-primary/20 bg-surface px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                      <FilePenLine aria-hidden="true" size={17} />
+                      Editar tarea
+                    </Link>
+                  )}
+
+                  {canDeleteTask && (
+                    <TaskDeleteButton
+                      taskId={task.id}
+                      taskTitle={task.title}
+                      subtaskCount={subtaskCount}
+                    />
+                  )}
+                </div>
               )}
             </div>
 
@@ -361,11 +381,7 @@ export default async function TaskPage({
                 href={`/workspaces/${task.workspace.id}`}
                 className="inline-flex max-w-full items-center gap-1.5 rounded font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
-                <FolderOpen
-                  aria-hidden="true"
-                  size={15}
-                  className="shrink-0"
-                />
+                <FolderOpen aria-hidden="true" size={15} className="shrink-0" />
                 <span className="min-w-0 wrap-break-words">
                   {task.workspace.name}
                 </span>
