@@ -223,6 +223,7 @@ export default function CreateTaskCommentForm({
 
         <p className="text-xs text-muted-foreground">
           DWG, XML, PDF, imágenes, Word y Excel. Máximo 50 MB por archivo.
+          Máximo 10 archivos por subida.
         </p>
       </div>
 
