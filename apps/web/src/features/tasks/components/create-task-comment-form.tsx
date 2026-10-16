@@ -41,6 +41,12 @@ const acceptedFileTypes = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/xml",
+  "text/xml",
+  ".dwg",
+  ".xml",
+  "application/acad",
+  "application/octet-stream",
 ].join(",");
 
 export default function CreateTaskCommentForm({
@@ -216,7 +222,7 @@ export default function CreateTaskCommentForm({
         />
 
         <p className="text-xs text-muted-foreground">
-          PDF, imágenes, Word y Excel. Máximo 50 MB por archivo.
+          DWG, XML, PDF, imágenes, Word y Excel. Máximo 50 MB por archivo.
         </p>
       </div>
 

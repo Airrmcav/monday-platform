@@ -13,6 +13,28 @@ type UploadTaskAttachmentsResult =
       error: string;
     };
 
+
+/**
+ * Los navegadores no siempre reconocen el MIME type de archivos de AutoCAD
+ * (.dwg, .dxf), por lo que devuelven file.type = ''. Esta funcion infiere
+ * el tipo de contenido correcto a partir de la extension cuando el browser
+ * no lo puede determinar.
+ */
+function resolveContentType(file: File): string {
+  if (file.type) {
+    return file.type;
+  }
+
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+
+  const extensionToMime: Record<string, string> = {
+    dwg: 'application/acad',
+    dxf: 'image/vnd.dwg',
+  };
+
+  return extensionToMime[extension] ?? 'application/octet-stream';
+}
+
 export async function uploadTaskAttachments(
   taskId: string,
   files: File[],
@@ -27,7 +49,7 @@ export async function uploadTaskAttachments(
   const intentsResult = await createTaskAttachmentUploadIntentsAction(taskId, {
     files: files.map((file) => ({
       originalName: file.name,
-      contentType: file.type,
+      contentType: resolveContentType(file),
       sizeBytes: file.size,
     })),
   });
