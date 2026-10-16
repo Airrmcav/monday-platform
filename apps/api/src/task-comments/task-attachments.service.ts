@@ -330,6 +330,7 @@ export class TaskAttachmentsService {
       },
       select: {
         storagePath: true,
+        originalName: true,
       },
     });
 
@@ -343,7 +344,9 @@ export class TaskAttachmentsService {
 
     const { data, error } = await this.supabaseAdmin.storage
       .from(bucket)
-      .createSignedUrl(attachment.storagePath, 60);
+      .createSignedUrl(attachment.storagePath, 60, {
+        download: attachment.originalName,
+      });
 
     if (error || !data?.signedUrl) {
       throw new ServiceUnavailableException(
