@@ -31,6 +31,7 @@ export const taskCommentSchema = z.object({
   authorId: z.uuid(),
   authorName: z.string(),
   content: z.string(),
+  authorAvatarUrl: z.string().nullable(),
   createdAt: z.iso.datetime({ offset: true }),
   attachments: z.array(taskAttachmentSchema),
 });

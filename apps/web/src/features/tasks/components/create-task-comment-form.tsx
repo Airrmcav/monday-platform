@@ -1,8 +1,19 @@
 "use client";
 
-import { type ChangeEvent, useActionState, useEffect, useState } from "react";
-import { useFormStatus } from "react-dom";
 import {
+  type ChangeEvent,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import { useFormStatus } from "react-dom";
+
+import {
+  File as FileIcon,
+  FileCode,
+  FileSpreadsheet,
   FileText,
   LoaderCircle,
   MessageSquarePlus,
@@ -15,7 +26,9 @@ import {
   createTaskCommentAction,
   type CreateTaskCommentState,
 } from "../actions/create-task-comment-action";
+
 import { uploadTaskAttachments } from "../lib/upload-task-attachments";
+
 import { cancelTaskAttachmentUploadAction } from "../actions/cancel-task-attachment-upload-action";
 
 type CreateTaskCommentFormProps = {
@@ -26,6 +39,7 @@ type UploadedAttachment = {
   id: string;
   originalName: string;
   sizeBytes: number;
+  previewUrl: string | null;
 };
 
 const initialState: CreateTaskCommentState = {
@@ -60,13 +74,38 @@ export default function CreateTaskCommentForm({
     string | null
   >(null);
 
+  // Conserva la lista actual para liberar las URLs al desmontar.
+  const attachmentsRef = useRef(attachments);
+
   const [state, formAction] = useActionState(
     createTaskCommentAction.bind(null, taskId),
     initialState,
   );
 
   useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  // Libera las URLs temporales si el componente se desmonta.
+  useEffect(() => {
+    return () => {
+      attachmentsRef.current.forEach((attachment) => {
+        if (attachment.previewUrl) {
+          URL.revokeObjectURL(attachment.previewUrl);
+        }
+      });
+    };
+  }, []);
+
+  // Limpia los adjuntos cuando el comentario se publica correctamente.
+  useEffect(() => {
     if (state.success) {
+      attachmentsRef.current.forEach((attachment) => {
+        if (attachment.previewUrl) {
+          URL.revokeObjectURL(attachment.previewUrl);
+        }
+      });
+
       setContent("");
       setAttachments([]);
       setUploadError("");
@@ -74,12 +113,14 @@ export default function CreateTaskCommentForm({
   }, [state.success]);
 
   const contentError = state.fieldErrors?.content?.join(" ");
+
   const attachmentError =
     uploadError || state.fieldErrors?.attachmentIds?.join(" ");
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
 
+    // Permite volver a seleccionar el mismo archivo.
     event.target.value = "";
 
     if (files.length === 0) {
@@ -102,13 +143,20 @@ export default function CreateTaskCommentForm({
         return;
       }
 
-      setAttachments((currentAttachments) => [
-        ...currentAttachments,
-        ...files.map((file, index) => ({
+      const uploadedAttachments: UploadedAttachment[] = files.map(
+        (file, index) => ({
           id: result.attachmentIds[index],
           originalName: file.name,
           sizeBytes: file.size,
-        })),
+          previewUrl: file.type.startsWith("image/")
+            ? URL.createObjectURL(file)
+            : null,
+        }),
+      );
+
+      setAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...uploadedAttachments,
       ]);
     } catch {
       setUploadError(
@@ -132,6 +180,14 @@ export default function CreateTaskCommentForm({
       if (!result.success) {
         setUploadError(result.error);
         return;
+      }
+
+      const attachmentToRemove = attachmentsRef.current.find(
+        (attachment) => attachment.id === attachmentId,
+      );
+
+      if (attachmentToRemove?.previewUrl) {
+        URL.revokeObjectURL(attachmentToRemove.previewUrl);
       }
 
       setAttachments((currentAttachments) =>
@@ -223,48 +279,72 @@ export default function CreateTaskCommentForm({
 
         <p className="text-xs text-muted-foreground">
           DWG, XML, PDF, imágenes, Word y Excel. Máximo 50 MB por archivo.
+          Máximo 10 archivos por subida.
         </p>
       </div>
 
       {attachments.length > 0 && (
         <ul className="mt-3 space-y-2" aria-label="Archivos adjuntos">
-          {attachments.map((attachment) => (
-            <li
-              key={attachment.id}
-              className="flex items-center gap-2 rounded-lg border border-border/70 bg-background px-3 py-2 text-sm"
-            >
-              <FileText
-                aria-hidden="true"
-                size={16}
-                className="shrink-0 text-primary"
-              />
+          {attachments.map((attachment) => {
+            const extension =
+              attachment.originalName.split(".").pop()?.toLowerCase() ?? "";
 
-              <span className="min-w-0 flex-1 truncate">
-                {attachment.originalName}
-              </span>
+            const Icon =
+              extension === "pdf" || extension === "doc" || extension === "docx"
+                ? FileText
+                : extension === "xls" || extension === "xlsx"
+                  ? FileSpreadsheet
+                  : extension === "xml" || extension === "dwg"
+                    ? FileCode
+                    : FileIcon;
 
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {formatFileSize(attachment.sizeBytes)}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemoveAttachment(attachment.id)}
-                disabled={isUploading || removingAttachmentId !== null}
-                aria-label={`Retirar ${attachment.originalName}`}
-                className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded p-1 text-muted-foreground transition hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+            return (
+              <li
+                key={attachment.id}
+                className="flex items-center gap-3 rounded-lg border border-border/70 bg-background px-3 py-2 text-sm"
               >
-                {removingAttachmentId === attachment.id ? (
-                  <LoaderCircle
-                    aria-hidden="true"
-                    size={16}
-                    className="animate-spin"
+                {attachment.previewUrl ? (
+                  <img
+                    src={attachment.previewUrl}
+                    alt={`Vista previa de ${attachment.originalName}`}
+                    className="size-12 shrink-0 rounded-md border border-border/70 object-cover"
                   />
                 ) : (
-                  <X aria-hidden="true" size={16} />
+                  <Icon
+                    aria-hidden="true"
+                    size={24}
+                    className="shrink-0 text-primary"
+                  />
                 )}
-              </button>
-            </li>
-          ))}
+
+                <span className="min-w-0 flex-1 truncate">
+                  {attachment.originalName}
+                </span>
+
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {formatFileSize(attachment.sizeBytes)}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => handleRemoveAttachment(attachment.id)}
+                  disabled={isUploading || removingAttachmentId !== null}
+                  aria-label={`Retirar ${attachment.originalName}`}
+                  className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded p-1 text-muted-foreground transition hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {removingAttachmentId === attachment.id ? (
+                    <LoaderCircle
+                      aria-hidden="true"
+                      size={16}
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <X aria-hidden="true" size={16} />
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
