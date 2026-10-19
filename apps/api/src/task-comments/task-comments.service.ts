@@ -5,6 +5,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { UserAvatarsService } from '../user-avatars/user-avatars.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateTaskCommentInput } from './schemas/create-task-comment.schema.js';
 import { Prisma } from '../generated/prisma/client.js';
@@ -21,6 +22,7 @@ export class TaskCommentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabaseAdmin: SupabaseAdminService,
+    private readonly userAvatarService: UserAvatarsService,
   ) {}
 
   async create(
@@ -139,7 +141,7 @@ export class TaskCommentsService {
               }
             }
 
-            return tx.taskComment.findUniqueOrThrow({
+            const newComment = await tx.taskComment.findUniqueOrThrow({
               where: {
                 id: comment.id,
               },
@@ -148,6 +150,7 @@ export class TaskCommentsService {
                 taskId: true,
                 authorId: true,
                 authorName: true,
+                author: { select: { avatarPath: true } },
                 content: true,
                 createdAt: true,
                 attachments: {
@@ -176,7 +179,15 @@ export class TaskCommentsService {
                 },
               },
             });
+            const { author, ...commentData } = newComment;
+            return {
+              ...commentData,
+              authorAvatarUrl: this.userAvatarService.getPublicUrl(
+                author.avatarPath,
+              ),
+            };
           },
+
           {
             isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
           },
@@ -267,6 +278,7 @@ export class TaskCommentsService {
             taskId: true,
             authorId: true,
             authorName: true,
+            author: { select: { avatarPath: true } },
             content: true,
             createdAt: true,
             attachments: {
@@ -297,7 +309,12 @@ export class TaskCommentsService {
         });
 
         return {
-          data: comments,
+          data: comments.map(({ author, ...comment }) => ({
+            ...comment,
+            authorAvatarUrl: this.userAvatarService.getPublicUrl(
+              author.avatarPath,
+            ),
+          })),
           pagination: {
             page: input.page,
             pageSize: input.pageSize,
